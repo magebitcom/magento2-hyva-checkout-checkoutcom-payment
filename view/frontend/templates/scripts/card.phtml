@@ -1,0 +1,202 @@
+<?php
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Helper\Config;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+
+$config = $viewModels->require(Config::class);
+$publicKey = $config->getPublicKey();
+?>
+<script>
+    function checkoutComCard() {
+        return {
+            component: '<?= $escaper->escapeJs('checkout.payment.method.checkoutcom.card') ?>',
+            validCard: false,
+            errors: {
+                'card-number': '<?= $escaper->escapeJs(__('Please enter a valid card number')) ?>',
+                'expiry-date': '<?= $escaper->escapeJs(__('Please enter a valid expiry date')) ?>',
+                'cvv': '<?= $escaper->escapeJs(__('Please enter a valid CVV code')) ?>'
+            },
+            errorIcons: {
+                'card-number': {'hidden': true},
+                'expiry-date': {'hidden': true},
+                'cvv': {'hidden': true}
+            },
+            defaultPaymentMethodIcon: '<?= $escaper->escapeJs($config->getImagesPath() . '/frames/multi/card.svg') ?>',
+            paymentMethodIcon: '<?= $escaper->escapeJs($config->getImagesPath() . '/frames/multi/card.svg') ?>',
+            init() {
+                if (!window.Frames) {
+                    // Add the Frames script tag to the page & initialize onload
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.checkout.com/js/framesv2.min.js';
+                    script.onload = () => this.initCheckoutComForm(window.Frames);
+
+                    document.head.append(script);
+                } else {
+                    this.removeCheckoutComEvents();
+                    this.initCheckoutComForm(window.Frames);
+                }
+            },
+            getCardPlaceholders () {
+                return {
+                    cardNumberPlaceholder: '<?= $escaper->escapeJs($config->getCardNumberPlaceholder() ?? __('Card number')) ?>',
+                    expiryMonthPlaceholder: '<?= $escaper->escapeJs($config->getExpiryMonthPlaceholder() ?? __('MM')) ?>',
+                    expiryYearPlaceholder: '<?= $escaper->escapeJs($config->getExpiryYearPlaceholder() ?? __('YY')) ?>',
+                    cvvPlaceholder: '<?= $escaper->escapeJs($config->getCvvPlaceholder() ?? __('CVV')) ?>'
+                };
+            },
+            getFormStyles () {
+                let formStyles = '<?= $escaper->escapeJs($config->getFormStyles()) ?>';
+                try {
+                    return JSON.parse(formStyles);
+                } catch(e) {
+                    return {};
+                }
+            },
+            clearPaymentMethodIcon () {
+                this.paymentMethodIcon = this.defaultPaymentMethodIcon;
+            },
+            showPaymentMethodIcon (paymentMethod) {
+                if (paymentMethod) {
+                    this.paymentMethodIcon = '<?= $escaper->escapeJs($config->getImagesPath()) ?>' + '/frames/multi/' + paymentMethod.toLowerCase() + '.svg';
+                }
+            },
+            initCheckoutComForm(Frames) {
+                Frames.init(
+                    {
+                        publicKey: '<?= $escaper->escapeJs($publicKey) ?>',
+                        debug: !!'<?= $escaper->escapeJs((bool)$config->isDebugModeEnabled()) ?>',
+                        schemeChoice: true,
+                        modes: [Frames.modes.FEATURE_FLAG_SCHEME_CHOICE],
+                        localization: this.getCardPlaceholders(),
+                        style: this.getFormStyles()
+                    }
+                );
+
+                Frames.addEventHandler(
+                    Frames.Events.FRAME_VALIDATION_CHANGED,
+                    function (event) {
+                        let paymentMethod = event.paymentMethod;
+                        if (event.isValid || event.isEmpty) {
+                            if (event.element === 'card-number' && !event.isEmpty) {
+                                console.log(event);
+                                this.showPaymentMethodIcon(paymentMethod);
+                            }
+                            this.clearErrorMessage(event.element);
+                        } else {
+                            this.setErrorMessage(event.element);
+                            this.validCard = false;
+                        }
+                    }.bind(this)
+                );
+
+                Frames.addEventHandler(
+                    Frames.Events.PAYMENT_METHOD_CHANGED,
+                    function (event) {
+                        let paymentMethod = event.paymentMethod;
+                        if (!paymentMethod) {
+                            this.clearPaymentMethodIcon();
+                        } else  {
+                            this.showPaymentMethodIcon(paymentMethod);
+                        }
+                    }.bind(this)
+                )
+
+                Frames.addEventHandler(
+                    Frames.Events.CARD_VALIDATION_CHANGED,
+                    async function () {
+                        let valid = Frames.isCardValid();
+
+                        if (valid) {
+                            window.dispatchEvent(new CustomEvent('magewire:loader:start:forced'));
+
+                            Frames.cardholder = {
+                                name: await this.getCardHolderName()
+                            };
+
+                            Frames.submitCard();
+                        } else {
+                            this.validCard = false;
+                        }
+                    }.bind(this)
+                );
+
+                Frames.addEventHandler(
+                    Frames.Events.CARD_TOKENIZED,
+                    async function (event) {
+                        await Magewire.find(this.component).setPaymentToken(event.token, event.bin, event.scheme);
+                        this.validCard = true;
+
+                        window.dispatchEvent(new CustomEvent('magewire:loader:done:forced'));
+                        Frames.enableSubmitForm();
+                    }.bind(this)
+                );
+
+                Frames.addEventHandler(
+                    Frames.Events.CARD_BIN_CHANGED,
+                    function (event) {
+                        if (!event.scheme) {
+                            event.scheme = '';
+                        }
+                        Magewire.find(this.component).setScheme(event.scheme);
+                    }.bind(this)
+                );
+            },
+            async getCardHolderName() {
+                let cardHolderName = await fetch(BASE_URL + 'checkout_com/details/cardname', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        return data['card_holder_name'];
+                    })
+                    .catch((error) => {
+                        console.error('Could not get the card holder name: ', error);
+                    });
+
+                if (cardHolderName) {
+                    return cardHolderName;
+                }
+
+                return '';
+            },
+            async saveCard(value) {
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+
+                await Magewire.find(this.component).setSaveCard(value);
+
+                window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+            },
+            clearErrorMessage (el) {
+                this.$refs[el].innerHTML = '';
+                this.errorIcons[el] = {'hidden': true};
+            },
+            setErrorMessage (el) {
+                this.$refs[el].innerHTML = this.errors[el];
+                this.errorIcons[el] = {'hidden': false};
+
+            },
+            removeCheckoutComEvents () {
+                Frames.removeAllEventHandlers(Frames.Events.CARD_VALIDATION_CHANGED);
+                Frames.removeAllEventHandlers(Frames.Events.FRAME_VALIDATION_CHANGED);
+                Frames.removeAllEventHandlers(Frames.Events.PAYMENT_METHOD_CHANGED);
+            },
+        };
+    }
+</script>

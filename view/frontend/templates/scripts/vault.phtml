@@ -1,0 +1,27 @@
+<?php
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magento\Framework\Escaper;
+
+/** @var Escaper $escaper */
+?>
+<script>
+    function checkoutComVault() {
+        return {
+            component: '<?= $escaper->escapeJs('checkout.payment.method.checkoutcom.vault') ?>',
+            async setPublicHash(publicHash) {
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+
+                await Magewire.find(this.component).setPublicHash(publicHash);
+
+                window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+            },
+        };
+    }
+</script>

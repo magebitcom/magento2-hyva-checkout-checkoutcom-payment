@@ -1,0 +1,44 @@
+<?php
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+?>
+<script>
+    function magewireLoader() {
+        return {
+            active: false,
+            activeForced: false,
+            loader() {
+                return {
+                    ['x-on:magewire:loader:start.window']() {
+                        this.active = true
+                    },
+                    ['x-on:magewire:loader:done.window']() {
+                        this.active = false
+                    },
+                    ['x-on:magewire:loader:start:forced.window']() {
+                        this.activeForced = true
+                    },
+                    ['x-on:magewire:loader:done:forced.window']() {
+                        this.activeForced = false
+                    },
+                    ['x-bind:class']() {
+                        return {
+                            'z-50 relative': this.active || this.activeForced
+                        };
+                    }
+                };
+            },
+
+            overlay() {
+                return {
+                    ['x-show']() {
+                        return this.active || this.activeForced;
+                    }
+                };
+            }
+        };
+    }
+</script>

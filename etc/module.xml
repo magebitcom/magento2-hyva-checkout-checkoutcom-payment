@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd"
+>
+    <module name="Magebit_CheckoutComPayment">
+        <sequence>
+            <module name="Hyva_Checkout"/>
+            <module name="CheckoutCom_Magento2"/>
+        </sequence>
+    </module>
+</config>

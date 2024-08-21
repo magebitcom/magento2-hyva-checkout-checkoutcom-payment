@@ -1,0 +1,48 @@
+<?php
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use CheckoutCom\Magento2\Block\Account\AddCard;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
+use Magebit\CheckoutComPayment\ViewModel\Serializer;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Magento\Vault\Model\PaymentToken;
+
+/** @var AddCard $block */
+/** @var CheckoutComCard $magewire */
+/** @var Escaper $escaper */
+/** @var PaymentToken $card */
+/** @var ViewModelRegistry $viewModels */
+
+$card = $block->getData('card');
+$details = $viewModels->require(Serializer::class)->unserialize($card->getTokenDetails() ?: '{}');
+?>
+<div>
+    <label class="flex">
+        <span class="mr-2">
+            <input type="radio"
+                   name="publicHash"
+                   required
+                   <?php if ($magewire->publicHash !== $card->getPublicHash()): ?>
+                   @click="setPublicHash('<?= $escaper->escapeHtmlAttr($card->getPublicHash())?>')"
+                   <?php else: ?>
+                   checked
+                   <?php endif; ?>
+            >
+        </span>
+        <span>
+            <img src="<?= $escaper->escapeHtmlAttr($block->cardHandler->getCardIcon($details['type'])); ?>"
+                 class="inline-block"
+                 alt="<?= $escaper->escapeHtmlAttr($details['type']) ?>">
+            <span>
+                <?= $escaper->escapeHtml($block->vaultHandler->renderTokenData($card))?>
+            </span>
+        </span>
+    </label>
+</div>

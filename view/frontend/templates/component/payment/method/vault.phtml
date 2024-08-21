@@ -1,0 +1,25 @@
+<?php
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Block\Payment\Vault;
+use Magento\Framework\Escaper;
+
+/** @var Vault $block */
+/** @var Escaper $escaper */
+?>
+<form x-data="initMagewireForm($el, $wire)"
+      x-init="initialize()"
+      class="relative"
+>
+    <div class="pr-5 mb-4 field field-reserved"
+         x-data="checkoutComVault"
+    >
+        <?= /** @noEscape */ $block->getCards()  ?>
+    </div>
+</form>

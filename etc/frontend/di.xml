@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd"
+>
+    <type name="Hyva\CompatModuleFallback\Model\CompatModuleRegistry">
+        <arguments>
+            <argument name="compatModules" xsi:type="array">
+                <item name="hyva-magento2-checkout-checkoutcom" xsi:type="array">
+                    <item name="original_module" xsi:type="string">CheckoutCom_Magento2</item>
+                    <item name="compat_module" xsi:type="string">Magebit_CheckoutComPayment</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Hyva\Checkout\Model\Magewire\Payment\PlaceOrderServiceProvider">
+        <arguments>
+            <argument name="placeOrderServiceList" xsi:type="array">
+                <item name="checkoutcom_card_payment" xsi:type="object">Magebit\CheckoutComPayment\Model\Magewire\Payment\CheckoutComPlaceOrderService</item>
+                <item name="checkoutcom_vault" xsi:type="object">Magebit\CheckoutComPayment\Model\Magewire\Payment\CheckoutComPlaceOrderService</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

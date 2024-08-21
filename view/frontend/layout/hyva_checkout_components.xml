@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd"
+>
+    <body>
+        <referenceBlock name="checkout.payment.methods">
+            <block name="checkout.payment.method.checkoutcom.card"
+                   as="checkoutcom_card_payment"
+                   template="Magebit_CheckoutComPayment::component/payment/method/card.phtml"
+            >
+                <arguments>
+                    <argument name="magewire" xsi:type="object">
+                        Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard
+                    </argument>
+                </arguments>
+            </block>
+            <block name="checkout.payment.method.checkoutcom.vault"
+                   as="checkoutcom_vault"
+                   class="Magebit\CheckoutComPayment\Block\Payment\Vault"
+                   template="Magebit_CheckoutComPayment::component/payment/method/vault.phtml"
+            >
+                <arguments>
+                    <argument name="magewire" xsi:type="object">
+                        Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComVault
+                    </argument>
+                </arguments>
+            </block>
+        </referenceBlock>
+    </body>
+</page>
