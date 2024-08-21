@@ -14,10 +14,10 @@ use Magewirephp\Magewire\Component;
 
 class CheckoutComCard extends Component
 {
-    public const string PAYMENT_TOKEN = 'checkout_com_payment_token';
-    public const string PAYMENT_CARD_BIN = 'checkout_com_payment_card_bin';
-    public const string PAYMENT_PREFERRED_SCHEME = 'checkout_com_payment_preferred_scheme';
-    public const string SAVE_CARD = 'checkout_com_save_card';
+    public const PAYMENT_TOKEN = 'checkout_com_payment_token';
+    public const PAYMENT_CARD_BIN = 'checkout_com_payment_card_bin';
+    public const PAYMENT_PREFERRED_SCHEME = 'checkout_com_payment_preferred_scheme';
+    public const SAVE_CARD = 'checkout_com_save_card';
 
     /**
      * @var bool|null

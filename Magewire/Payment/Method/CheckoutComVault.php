@@ -14,7 +14,7 @@ use Magewirephp\Magewire\Component;
 
 class CheckoutComVault extends Component
 {
-    public const string PUBLIC_HASH = 'checkout_com_public_hash';
+    public const PUBLIC_HASH = 'checkout_com_public_hash';
 
     /**
      * @var string|null
