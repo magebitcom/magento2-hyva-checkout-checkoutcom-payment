@@ -5,7 +5,7 @@
   "type": "magento2-module",
   "require": {
     "magento/framework": "*",
-    "checkoutcom/module-payment": "^6.1.0",
+    "checkoutcom/magento2": "^6.3.0",
     "hyva-themes/magento2-compat-module-fallback": "*",
     "hyva-themes/magento2-hyva-checkout": "*"
   },
