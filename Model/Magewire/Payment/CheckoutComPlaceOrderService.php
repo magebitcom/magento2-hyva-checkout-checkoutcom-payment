@@ -19,6 +19,7 @@ use CheckoutCom\Magento2\Model\Service\OrderStatusHandlerService;
 use CheckoutCom\Magento2\Model\Service\PaymentErrorHandlerService;
 use CheckoutCom\Magento2\Model\Service\QuoteHandlerService;
 use Exception;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApm;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComVault;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractOrderData;
@@ -112,6 +113,8 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                 'checkoutcom_vault' => [
                     'publicHash' => $this->session->getData(CheckoutComVault::PUBLIC_HASH)
                 ],
+                'checkoutcom_apm' => $this->getApmData(),
+                default => []
             };
 
             $data['methodId'] = $method;
@@ -306,5 +309,22 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
     public function getRedirectUrl(Quote $quote, ?int $orderId = null): string
     {
         return $this->urlRedirect;
+    }
+
+    private function getApmData(): array
+    {
+        $selectedApm = $this->session->getData(CheckoutComApm::SELECTED_APM);
+        $apmData = $this->session->getData(CheckoutComApm::APM_DATA) ?: [];
+
+        $data = [
+            'methodId' => 'checkoutcom_apm',
+            'source' => $selectedApm
+        ];
+
+        if (isset($apmData[$selectedApm])) {
+            $data = array_merge($data, $apmData[$selectedApm]);
+        }
+
+        return $data;
     }
 }

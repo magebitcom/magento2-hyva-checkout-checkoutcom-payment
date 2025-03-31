@@ -1,0 +1,63 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var Escaper $escaper */
+?>
+
+<div x-cloak
+     x-show="$wire.selectedMethod === 'mbway'"
+>
+    <div class="grid grid-cols-12 gap-6">
+        <div class="col-span-12 field-wrapper field-type-text field field-reserved md:col-span-6">
+            <div class="w-full font-medium text-gray-700 relative required">
+                <label for="mbway-country-code" class="label">
+                    <span><?= $escaper->escapeHtml(__('Country Code')) ?></span>
+                </label>
+
+                <div class="flex items-center gap-4">
+                    <input class="block w-full form-input grow renderer-text"
+                           type="text"
+                           id="mbway-country-code"
+                           name="mbway-country-code"
+                           wire:model.delay.1000ms="mbwayCountryCode"
+                           wire:loading.class="loading"
+                           wire:loading.attr="disabled"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                           maxlength="3"
+                    >
+                </div>
+            </div>
+        </div>
+
+        <div class="col-span-12 field-wrapper field-type-text field field-reserved md:col-span-6">
+            <div class="w-full font-medium text-gray-700 relative required">
+                <label for="mbway-phone-number" class="label">
+                    <span><?= $escaper->escapeHtml(__('Phone Number')) ?></span>
+                </label>
+
+                <div class="flex items-center gap-4">
+                    <input class="block w-full form-input grow renderer-text"
+                           type="text"
+                           id="mbway-phone-number"
+                           name="mbway-phone-number"
+                           wire:model.delay.1000ms="mbwayPhoneNumber"
+                           wire:loading.class="loading"
+                           wire:loading.attr="disabled"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                           maxlength="9"
+                    >
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

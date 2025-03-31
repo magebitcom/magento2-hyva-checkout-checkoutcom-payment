@@ -32,6 +32,19 @@
                     </argument>
                 </arguments>
             </block>
+            <block name="checkout.payment.method.checkoutcom.apm"
+                   as="checkoutcom_apm"
+                   template="Magebit_CheckoutComPayment::component/payment/method/apm.phtml"
+                   ifconfig="payment/checkoutcom_apm/active">
+                <arguments>
+                    <argument name="magewire" xsi:type="object">
+                        Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApm
+                    </argument>
+                </arguments>
+                <block name="checkout.payment.method.checkoutcom.apm.mbway"
+                       as="checkoutcom_apm_mbway"
+                       template="Magebit_CheckoutComPayment::component/payment/method/apm/mbway.phtml" />
+            </block>
         </referenceBlock>
     </body>
 </page>
