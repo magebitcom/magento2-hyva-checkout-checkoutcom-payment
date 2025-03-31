@@ -27,3 +27,6 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 * Klarna (NAS)
 * Paypal Payments (NAS)
 * MOTO Payments
+
+### Supported alternative payment methods:
+* MB PAY
