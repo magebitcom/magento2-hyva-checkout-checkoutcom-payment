@@ -22,9 +22,11 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 * Card Payments -> Display Card Icons
 
 ### Payment methods the currently are not supported:
-* Alternative Payments
 * Apple Pay Payments
 * Google Pay Payments
 * Klarna (NAS)
 * Paypal Payments (NAS)
 * MOTO Payments
+
+### Supported alternative payment methods:
+* MB PAY

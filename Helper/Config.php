@@ -174,7 +174,8 @@ class Config extends AbstractHelper implements ArgumentInterface
      *
      * @return string
      */
-    public function getFormLayout(): string {
+    public function getFormLayout(): string
+    {
         return $this->scopeConfig->getValue(
             'payment/checkoutcom_card_payment/payment_form_layout',
             ScopeInterface::SCOPE_STORE,
@@ -228,5 +229,18 @@ class Config extends AbstractHelper implements ArgumentInterface
     public function getImagesPath(): string
     {
         return $this->assetRepository->getUrl('CheckoutCom_Magento2::images');
+    }
+
+    /**
+     * Check whether MB PAY phone validation is enabled
+     *
+     * @return bool
+     */
+    public function isPhoneValidationEnabled(): bool
+    {
+        return (bool) $this->scopeConfig->getValue(
+            'settings/checkoutcom_configuration/mb_pay_phone_validation',
+            ScopeInterface::SCOPE_STORE,
+        );
     }
 }

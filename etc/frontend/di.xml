@@ -24,6 +24,7 @@
             <argument name="placeOrderServiceList" xsi:type="array">
                 <item name="checkoutcom_card_payment" xsi:type="object">Magebit\CheckoutComPayment\Model\Magewire\Payment\CheckoutComPlaceOrderService</item>
                 <item name="checkoutcom_vault" xsi:type="object">Magebit\CheckoutComPayment\Model\Magewire\Payment\CheckoutComPlaceOrderService</item>
+                <item name="checkoutcom_apm" xsi:type="object">Magebit\CheckoutComPayment\Model\Magewire\Payment\CheckoutComPlaceOrderService</item>
             </argument>
         </arguments>
     </type>
