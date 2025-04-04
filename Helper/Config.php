@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace Magebit\CheckoutComPayment\Helper;
 
+use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigGooglePayButton;
+use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigGooglePayEnvironment;
+use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigGooglePayNetworks;
 use JsonException;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Helper\AbstractHelper;
@@ -19,6 +22,14 @@ use Magento\Store\Model\ScopeInterface;
 
 class Config extends AbstractHelper implements ArgumentInterface
 {
+    /**
+     * Default allowed GooglePay networks if not configured
+     */
+    private const DEFAULT_CARD_NETWORKS = [
+        ConfigGooglePayNetworks::CARD_VISA,
+        ConfigGooglePayNetworks::CARD_MASTERCARD
+    ];
+
     /**
      * @param Session $session
      * @param Repository $assetRepository
@@ -239,8 +250,105 @@ class Config extends AbstractHelper implements ArgumentInterface
     public function isPhoneValidationEnabled(): bool
     {
         return (bool) $this->scopeConfig->getValue(
-            'settings/checkoutcom_configuration/mb_pay_phone_validation',
+            'payment/checkoutcom_apm/mb_pay_phone_validation',
             ScopeInterface::SCOPE_STORE,
         );
+    }
+
+    /**
+     * Get the store name
+     *
+     * @return string
+     */
+    public function getStoreName(): string
+    {
+        return $this->scopeConfig->getValue(
+            'general/store_information/name',
+            ScopeInterface::SCOPE_STORE,
+        ) ?? '';
+    }
+
+    /**
+     * Get Google Pay gateway name
+     *
+     * @return string
+     */
+    public function getGatewayName(): string
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_google_pay/gateway_name',
+            ScopeInterface::SCOPE_STORE
+        ) ?? 'checkoutltd';
+    }
+
+    /**
+     * Get Google Pay merchant ID
+     *
+     * @return string|null
+     */
+    public function getMerchantId(): ?string
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_google_pay/merchant_id',
+            ScopeInterface::SCOPE_STORE
+        );
+    }
+
+    /**
+     * Get Google Pay environment
+     *
+     * @return string
+     */
+    public function getEnvironment(): string
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_google_pay/environment',
+            ScopeInterface::SCOPE_STORE
+        ) ?? ConfigGooglePayEnvironment::ENVIRONMENT_TEST;
+    }
+
+    /**
+     * Get allowed card networks
+     *
+     * @return array
+     */
+    public function getAllowedCardNetworks(): array
+    {
+        $networks = $this->scopeConfig->getValue(
+            'payment/checkoutcom_google_pay/allowed_card_networks',
+            ScopeInterface::SCOPE_STORE
+        );
+
+        if (empty($networks)) {
+            return self::DEFAULT_CARD_NETWORKS;
+        }
+
+        return explode(',', $networks);
+    }
+
+    /**
+     * Google Pay button corner radius
+     *
+     * @return int
+     */
+    public function getButtonRadius(): int
+    {
+        return (int)$this->scopeConfig->getValue(
+            'payment/checkoutcom_google_pay/button_radius',
+            ScopeInterface::SCOPE_STORE,
+        ) ?? 8;
+    }
+
+    /**
+     * Get Google Pay button style
+     *
+     * @return string
+     */
+    public function getButtonStyle(): string
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_google_pay/button_style',
+            ScopeInterface::SCOPE_STORE
+        ) ?? ConfigGooglePayButton::BUTTON_BLACK;
     }
 }

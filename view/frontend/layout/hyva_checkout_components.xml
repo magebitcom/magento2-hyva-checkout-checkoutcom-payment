@@ -32,6 +32,16 @@
                     </argument>
                 </arguments>
             </block>
+            <block name="checkout.payment.method.checkoutcom.googlepay"
+                   as="checkoutcom_google_pay"
+                   template="Magebit_CheckoutComPayment::component/payment/method/googlepay.phtml"
+                   ifconfig="payment/checkoutcom_google_pay/active">
+                <arguments>
+                    <argument name="magewire" xsi:type="object">
+                        Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComGooglePay
+                    </argument>
+                </arguments>
+            </block>
             <block name="checkout.payment.method.checkoutcom.apm"
                    as="checkoutcom_apm"
                    template="Magebit_CheckoutComPayment::component/payment/method/apm.phtml"
