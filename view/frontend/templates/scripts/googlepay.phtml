@@ -1,0 +1,281 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Helper\Config;
+use Magebit\CheckoutComPayment\ViewModel\Data;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+
+$config = $viewModels->require(Config::class);
+$orderData = $viewModels->require(Data::class);
+?>
+<script>
+    function initCheckoutComGooglePay(componentName) {
+
+        const googlePayComponent = Magewire.find(componentName);
+
+        const googlePayConfig = {
+            environment: '<?= $escaper->escapeJs($config->getEnvironment()) ?>',
+            merchantId: '<?= $escaper->escapeJs($config->getMerchantId()) ?>',
+            merchantName: '<?= $escaper->escapeJs($config->getStoreName()) ?>',
+            gateway: '<?= $escaper->escapeJs($config->getGatewayName()) ?>',
+            gatewayMerchantId: '<?= $escaper->escapeJs($config->getPublicKey()) ?>',
+            buttonColor: '<?= $escaper->escapeJs($config->getButtonStyle()) ?>',
+            buttonRadius: '<?= $escaper->escapeJs($config->getButtonRadius()) ?>',
+            allowedCardNetworks: <?= /** noEscape */ json_encode($config->getAllowedCardNetworks()) ?>,
+            currency: '<?= $escaper->escapeJs($orderData->getCurrency()) ?>'
+        };
+
+        const baseRequest = {
+            apiVersion: 2,
+            apiVersionMinor: 0
+        };
+
+        function loadGooglePayScript() {
+            return new Promise((resolve, reject) => {
+                if (window.google && window.google.payments && window.google.payments.api) {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://pay.google.com/gp/p/js/pay.js';
+                script.onload = () => {
+                    resolve();
+                };
+                script.onerror = () => {
+                    reject(new Error('Failed to load Google Pay SDK'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        function createGooglePayClient() {
+            return new window.google.payments.api.PaymentsClient({
+                environment: googlePayConfig.environment
+            });
+        }
+
+        function isGooglePayAvailable(client) {
+            const isReadyToPayRequest = Object.assign({}, baseRequest, {
+                allowedPaymentMethods: [{
+                    type: 'CARD',
+                    parameters: {
+                        allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                        allowedCardNetworks: googlePayConfig.allowedCardNetworks
+                    }
+                }]
+            });
+
+            return client.isReadyToPay(isReadyToPayRequest);
+        }
+
+        function renderButton(client, containerId, onButtonClick) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                console.error('GooglePay: Button container not found:', containerId);
+                return false;
+            }
+
+            <?php
+            /**
+             * buttonType and buttonSizeMode are hardcoded, please see the resource:
+             * https://developers.google.com/pay/api/web/guides/resources/customize
+             * if non-standard appearance is required.
+             */
+            ?>
+            const button = client.createButton({
+                buttonColor: googlePayConfig.buttonColor,
+                buttonRadius: googlePayConfig.buttonRadius,
+                buttonType: 'plain',
+                buttonSizeMode: 'fill',
+                onClick: onButtonClick
+            });
+
+            container.innerHTML = '';
+            container.appendChild(button);
+            return true;
+        }
+
+        function createPaymentDataRequest(totalAmount) {
+            return Object.assign({}, baseRequest, {
+                allowedPaymentMethods: [{
+                    type: 'CARD',
+                    parameters: {
+                        allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                        allowedCardNetworks: googlePayConfig.allowedCardNetworks
+                    },
+                    tokenizationSpecification: {
+                        type: 'PAYMENT_GATEWAY',
+                        parameters: {
+                            'gateway': googlePayConfig.gateway,
+                            'gatewayMerchantId': googlePayConfig.gatewayMerchantId
+                        }
+                    }
+                }],
+                merchantInfo: {
+                    merchantId: googlePayConfig.merchantId,
+                    merchantName: googlePayConfig.merchantName
+                },
+                transactionInfo: {
+                    totalPriceStatus: 'FINAL',
+                    totalPrice: totalAmount.toFixed(2),
+                    currencyCode: googlePayConfig.currency
+                }
+            });
+        }
+
+        async function processPayment(paymentData) {
+            try {
+                // Extract token data from payment response
+                let tokenData;
+                if (paymentData.paymentMethodData?.tokenizationData?.token) {
+                    const tokenString = paymentData.paymentMethodData.tokenizationData.token;
+                    const parsedToken = (typeof tokenString === 'string') ? JSON.parse(tokenString) : tokenString;
+
+                    tokenData = {
+                        signature: parsedToken.signature,
+                        protocolVersion: parsedToken.protocolVersion,
+                        signedMessage: parsedToken.signedMessage
+                    };
+                }
+
+                // Check if we have valid token data
+                if (!tokenData) {
+                    window.dispatchMessages([{
+                        type: 'error',
+                        text: 'Invalid payment data received from Google Pay'
+                    }]);
+                    return false;
+                }
+
+                // Place order through Magewire component
+                await googlePayComponent.setPaymentToken(tokenData);
+                await googlePayComponent.placeOrder();
+
+                return true;
+            } catch (error) {
+                window.dispatchMessages?.([{
+                    type: 'error',
+                    text: 'Failed to process Google Pay payment: ' + error.message
+                }]);
+                return false;
+            }
+        }
+
+        function onGooglePayButtonClick(client) {
+            // Get the latest amount directly from the Magewire component
+            const currentTotal = googlePayComponent.get('amount');
+
+            // First, validate all required checkout fields using Hyva Checkout validation API
+            hyvaCheckout.validation.validate().then(isValid => {
+                if (!isValid) {
+                    window.dispatchMessages([{
+                        type: 'error',
+                        text: 'Please complete all required information before proceeding with Google Pay'
+                    }]);
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+
+                try {
+                    // Create payment request with current total
+                    const paymentDataRequest = createPaymentDataRequest(currentTotal);
+
+                    // Request payment data
+                    client.loadPaymentData(paymentDataRequest)
+                        .then(paymentData => {
+                            return processPayment(paymentData);
+                        })
+                        .finally(() => {
+                            window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+                        })
+                        .catch(error => {
+                            if (error.statusCode !== 'CANCELED') {
+                                window.dispatchMessages?.([{
+                                    type: 'error',
+                                    text: 'Error with Google Pay: ' + (error.message || 'Unknown error')
+                                }]);
+                            }
+                        });
+                } catch (error) {
+                    window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+                    window.dispatchMessages([{
+                        type: 'error',
+                        text: 'Error initiating Google Pay: ' + error.message
+                    }]);
+                }
+            }).catch(exception => {
+                window.dispatchMessages([{
+                    type: 'error',
+                    text: 'Unable to validate checkout information'
+                }]);
+            });
+        }
+
+        <?php
+        /**
+         * Alpine component handles the Google Pay button initialization,
+         * payment flow, and communication with Magewire components.
+         */
+        ?>
+        return {
+            buttonContainerId: 'ckoGooglePayButton-inNavigationContainer',
+            isGooglePayAvailable: false,
+            isGooglePayButtonRendered: false,
+            isApproved: false,
+
+            async setupGooglePay() {
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+
+                try {
+                    await Promise.all([
+                        loadGooglePayScript()
+                    ]);
+
+                    const client = createGooglePayClient();
+                    const response = await isGooglePayAvailable(client);
+
+                    if (response.result) {
+                        this.isGooglePayAvailable = true;
+
+                        this.isGooglePayButtonRendered = renderButton(
+                            client,
+                            this.buttonContainerId,
+                            // Arrow function to preserve 'this' context
+                            () => onGooglePayButtonClick(client)
+                        );
+                        // This event is needed in smart-button.phtml to show/hide button
+                        window.dispatchEvent(new CustomEvent('googlepay:button:created'));
+
+                    } else {
+                        this.isGooglePayAvailable = false;
+                        window.dispatchMessages([{
+                            type: 'warning',
+                            text: 'Google Pay is not available on this device or browser'
+                        }]);
+                    }
+                } catch (error) {
+                    window.dispatchMessages([{
+                        type: 'error',
+                        text: 'Failed to setup Google Pay: ' + error.message
+                    }]);
+                } finally {
+                    window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+                }
+            }
+        };
+    }
+</script>

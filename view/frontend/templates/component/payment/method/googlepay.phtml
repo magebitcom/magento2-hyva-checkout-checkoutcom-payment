@@ -1,0 +1,23 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComGooglePay;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var CheckoutComGooglePay $magewire */
+/** @var Escaper $escaper */
+?>
+
+<div x-data="initCheckoutComGooglePay('<?= $escaper->escapeJs($block->getNameInLayout()) ?>')"
+     x-init="setupGooglePay()">
+
+    <?= $escaper->escapeHtml(__('Please use Google Pay button to complete the order.')) ?>
+</div>

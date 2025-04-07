@@ -16,6 +16,15 @@
             <block name="checkoutcom-vault-script"
                    template="Magebit_CheckoutComPayment::scripts/vault.phtml"
                    ifconfig="payment/checkoutcom_vault/active" />
+            <block name="checkoutcom-googlepay-script"
+                   template="Magebit_CheckoutComPayment::scripts/googlepay.phtml"
+                   ifconfig="payment/checkoutcom_google_pay/active" />
+        </referenceContainer>
+        <referenceContainer name="hyva.checkout.navigation.right">
+            <block name="checkout.place-order.google-pay"
+                   template="Magebit_CheckoutComPayment::component/payment/method/googlepay/smart-button.phtml"
+                   after="checkout.place-order"
+            />
         </referenceContainer>
     </body>
 </page>

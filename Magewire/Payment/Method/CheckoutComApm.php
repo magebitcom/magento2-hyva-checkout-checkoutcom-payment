@@ -136,26 +136,6 @@ class CheckoutComApm extends Form implements EvaluationInterface
     }
 
     /**
-     * Get payment method code
-     *
-     * @return string
-     */
-    public function getCode(): string
-    {
-        return 'checkoutcom_apm';
-    }
-
-    /**
-     * Get payment method name
-     *
-     * @return string
-     */
-    public function getName(): string
-    {
-        return 'checkoutcom_apm';
-    }
-
-    /**
      * Get available APM methods
      *
      * @return string[]

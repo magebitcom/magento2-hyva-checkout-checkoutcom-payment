@@ -12,7 +12,12 @@ composer require magebitcom/magento2-hyva-checkout-checkoutcom-payment
 bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrade
 ```
 
-## Features
+## Feature Coverage
+
+- [x] Card Payments (Multiple iframes)
+    - [X] Vault
+- [x] Google Pay
+- [x] MB PAY
 
 ### Functionality that is currently not supported:
 * Adding a new Stored Card from My Account -> Stored Payment Methods
@@ -23,10 +28,22 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 
 ### Payment methods the currently are not supported:
 * Apple Pay Payments
-* Google Pay Payments
 * Klarna (NAS)
 * Paypal Payments (NAS)
 * MOTO Payments
 
 ### Supported alternative payment methods:
 * MB PAY
+
+### Google Pay Payments: New Configuration Options
+
+* Button corner radius
+
+This option sets the `border-radius` property of the button and is measured in pixels. There is no need to specify the
+CSS `px` unit in this option input field.
+
+### Alternative payments: New Configuration Options
+
+* Enable MB WAY Phone Validation
+
+This option sets strict phone validation for MB WAY phone numbers (must be 9 digits and start with 9).

@@ -9,10 +9,14 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
-        <settings>
-            <checkoutcom_configuration>
+        <payment>
+            <checkoutcom_apm>
                 <mb_pay_phone_validation>0</mb_pay_phone_validation>
-            </checkoutcom_configuration>
-        </settings>
+            </checkoutcom_apm>
+            <checkoutcom_google_pay>
+                <google_pay_replace_place_order>0</google_pay_replace_place_order>
+                <google_pay_button_radius>8</google_pay_button_radius>
+            </checkoutcom_google_pay>
+        </payment>
     </default>
 </config>

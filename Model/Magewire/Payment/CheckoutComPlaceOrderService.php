@@ -21,6 +21,7 @@ use CheckoutCom\Magento2\Model\Service\QuoteHandlerService;
 use Exception;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApm;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComGooglePay;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComVault;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractOrderData;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractPlaceOrderService;
@@ -113,6 +114,11 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                 'checkoutcom_vault' => [
                     'publicHash' => $this->session->getData(CheckoutComVault::PUBLIC_HASH)
                 ],
+                'checkoutcom_google_pay' => [
+                    'methodId' => 'checkoutcom_google_pay',
+                    'cardToken' => $this->session->getData(CheckoutComGooglePay::PAYMENT_TOKEN),
+                    'source' => $this->session->getData(CheckoutComGooglePay::PAYMENT_SOURCE)
+                ],
                 'checkoutcom_apm' => $this->getApmData(),
                 default => []
             };
@@ -163,7 +169,10 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
 
                     $isValidResponse = $api->isValidResponse($response);
 
-                    if ($isValidResponse) {
+                    // Check if Google Pay response is declined
+                    $isDeclined = isset($response['status']) && $response['status'] === 'Declined';
+
+                    if ($isValidResponse && !$isDeclined) {
                         // Create an order if processing is payment first
                         $order = $order === null ? $this->orderHandler->setMethodId($data['methodId'])->handleOrder($quote) : $order;
 
@@ -182,10 +191,17 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                         // Save the order
                         $this->orderRepository->save($order);
                         // Update the response parameters
-                        $success = $isValidResponse;
+                        $success = true;
                     } else {
-                        // Payment failed
-                        if (isset($response['response_code'])) {
+                        // Payment failed or declined
+                        if ($isDeclined) {
+                            // Handle declined payment specifically
+                            if (isset($response['response_summary'])) {
+                                $message = __('Your payment was declined. Reason: %1', $response['response_summary']);
+                            } else {
+                                $message = __('Your payment was declined.');
+                            }
+                        } elseif (isset($response['response_code'])) {
                             $message = $this->paymentErrorHandler->getErrorMessage($response['response_code']);
                         } else {
                             $message = __('The transaction could not be processed.');
@@ -232,7 +248,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                 $this->logger->write($debugMessage);
             }
 
-            $this->setUrlRedirect('checkout/cart');
+            $this->setUrlRedirect('hyva_checkout/index');
 
             return 1;
         }
