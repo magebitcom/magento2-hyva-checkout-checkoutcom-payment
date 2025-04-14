@@ -17,7 +17,12 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 - [x] Card Payments (Multiple iframes)
     - [X] Vault
 - [x] Google Pay
-- [x] MB PAY
+- [x] Apple Pay
+    - [x] Checkout Page
+    - [ ] Cart
+    - [ ] Minicart
+- [x] Alternative payment methods
+    - [X] MB PAY
 
 ### Functionality that is currently not supported:
 * Adding a new Stored Card from My Account -> Stored Payment Methods
@@ -27,13 +32,9 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 * Card Payments -> Display Card Icons
 
 ### Payment methods the currently are not supported:
-* Apple Pay Payments
 * Klarna (NAS)
 * Paypal Payments (NAS)
 * MOTO Payments
-
-### Supported alternative payment methods:
-* MB PAY
 
 ### Google Pay Payments: New Configuration Options
 
@@ -41,6 +42,19 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 
 This option sets the `border-radius` property of the button and is measured in pixels. There is no need to specify the
 CSS `px` unit in this option input field.
+
+### Apple Pay Payments: New Configuration Options
+
+* Button corner radius
+
+This option sets the `border-radius` property of the button and is measured in pixels. There is no need to specify the
+CSS `px` unit in this option input field.
+
+* Button height
+
+This option sets the `height` property of the button and is measured in pixels. There is no need to specify the
+CSS `px` unit in this option input field.
+
 
 ### Alternative payments: New Configuration Options
 

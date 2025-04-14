@@ -1,0 +1,11 @@
+#payment-method-option-checkoutcom_apple_pay {
+  @apply hidden;
+}
+
+#payment-method-option-checkoutcom_apple_pay.checkoutcom_apple_pay-visible {
+  @apply block;
+}
+
+#payment-method-option-checkoutcom_apple_pay.active {
+  @apply block;
+}

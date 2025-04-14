@@ -10,8 +10,7 @@ declare(strict_types=1);
 namespace Magebit\CheckoutComPayment\Helper;
 
 use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigGooglePayButton;
-use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigGooglePayEnvironment;
-use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigGooglePayNetworks;
+use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigApplePayButton;
 use JsonException;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Helper\AbstractHelper;
@@ -22,14 +21,6 @@ use Magento\Store\Model\ScopeInterface;
 
 class Config extends AbstractHelper implements ArgumentInterface
 {
-    /**
-     * Default allowed GooglePay networks if not configured
-     */
-    private const DEFAULT_CARD_NETWORKS = [
-        ConfigGooglePayNetworks::CARD_VISA,
-        ConfigGooglePayNetworks::CARD_MASTERCARD
-    ];
-
     /**
      * @param Session $session
      * @param Repository $assetRepository
@@ -269,6 +260,19 @@ class Config extends AbstractHelper implements ArgumentInterface
     }
 
     /**
+     * Get the store country
+     *
+     * @return string
+     */
+    public function getStoreCountry(): string
+    {
+        return $this->scopeConfig->getValue(
+            'general/country/default',
+            ScopeInterface::SCOPE_STORE,
+        ) ?? 'US';
+    }
+
+    /**
      * Get Google Pay gateway name
      *
      * @return string
@@ -286,7 +290,7 @@ class Config extends AbstractHelper implements ArgumentInterface
      *
      * @return string|null
      */
-    public function getMerchantId(): ?string
+    public function getGoogleMerchantId(): ?string
     {
         return $this->scopeConfig->getValue(
             'payment/checkoutcom_google_pay/merchant_id',
@@ -304,24 +308,20 @@ class Config extends AbstractHelper implements ArgumentInterface
         return $this->scopeConfig->getValue(
             'payment/checkoutcom_google_pay/environment',
             ScopeInterface::SCOPE_STORE
-        ) ?? ConfigGooglePayEnvironment::ENVIRONMENT_TEST;
+        );
     }
 
     /**
-     * Get allowed card networks
+     * Get Google Pay allowed card networks
      *
      * @return array
      */
-    public function getAllowedCardNetworks(): array
+    public function getGoogleAllowedCardNetworks(): array
     {
         $networks = $this->scopeConfig->getValue(
             'payment/checkoutcom_google_pay/allowed_card_networks',
             ScopeInterface::SCOPE_STORE
         );
-
-        if (empty($networks)) {
-            return self::DEFAULT_CARD_NETWORKS;
-        }
 
         return explode(',', $networks);
     }
@@ -331,7 +331,7 @@ class Config extends AbstractHelper implements ArgumentInterface
      *
      * @return int
      */
-    public function getButtonRadius(): int
+    public function getGoogleButtonRadius(): int
     {
         return (int)$this->scopeConfig->getValue(
             'payment/checkoutcom_google_pay/button_radius',
@@ -344,11 +344,93 @@ class Config extends AbstractHelper implements ArgumentInterface
      *
      * @return string
      */
-    public function getButtonStyle(): string
+    public function getGoogleButtonStyle(): string
     {
         return $this->scopeConfig->getValue(
             'payment/checkoutcom_google_pay/button_style',
             ScopeInterface::SCOPE_STORE
         ) ?? ConfigGooglePayButton::BUTTON_BLACK;
+    }
+
+    /**
+     * Get Apple Pay Merchant ID
+     *
+     * @return string
+     */
+    public function getAppleMerchantID(): string
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/merchant_id',
+            ScopeInterface::SCOPE_STORE
+        );
+    }
+
+    /**
+     * Get Apple Pay supported networks
+     *
+     * @return array
+     */
+    public function getAppleSupportedNetworks(): array
+    {
+        $networks = $this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/supported_networks',
+            ScopeInterface::SCOPE_STORE
+        );
+
+        return explode(',', $networks);
+    }
+
+    /**
+     * Get Apple Pay merchant capabilities
+     *
+     * @return array
+     */
+    public function getAppleMerchantCapabilities(): array
+    {
+        $capabilities = $this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/merchant_capabilities',
+            ScopeInterface::SCOPE_STORE
+        );
+
+        return explode(',', $capabilities);
+    }
+
+    /**
+     * Get Apple Pay button style
+     *
+     * @return string
+     */
+    public function getAppleButtonStyle(): string
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/button_style',
+            ScopeInterface::SCOPE_STORE
+        ) ?? ConfigApplePayButton::BUTTON_BLACK;
+    }
+
+    /**
+     * Apple Pay button corner radius
+     *
+     * @return int
+     */
+    public function getAppleButtonRadius(): int
+    {
+        return (int)$this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/button_radius',
+            ScopeInterface::SCOPE_STORE,
+        ) ?? 8;
+    }
+
+    /**
+     * Apple Pay button height
+     *
+     * @return int
+     */
+    public function getAppleButtonHeight(): int
+    {
+        return (int)$this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/button_height',
+            ScopeInterface::SCOPE_STORE,
+        ) ?? 40;
     }
 }

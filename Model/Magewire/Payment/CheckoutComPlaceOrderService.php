@@ -22,6 +22,7 @@ use Exception;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApm;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComGooglePay;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApplePay;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComVault;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractOrderData;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractPlaceOrderService;
@@ -118,6 +119,11 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                     'methodId' => 'checkoutcom_google_pay',
                     'cardToken' => $this->session->getData(CheckoutComGooglePay::PAYMENT_TOKEN),
                     'source' => $this->session->getData(CheckoutComGooglePay::PAYMENT_SOURCE)
+                ],
+                'checkoutcom_apple_pay' => [
+                    'methodId' => 'checkoutcom_apple_pay',
+                    'cardToken' => $this->session->getData(CheckoutComApplePay::PAYMENT_TOKEN),
+                    'source' => $this->session->getData(CheckoutComApplePay::PAYMENT_SOURCE)
                 ],
                 'checkoutcom_apm' => $this->getApmData(),
                 default => []

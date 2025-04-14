@@ -1,0 +1,218 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Helper\Config;
+use Magebit\CheckoutComPayment\ViewModel\Data;
+use Magebit\CheckoutComPayment\ViewModel\ApplePay;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+
+$config = $viewModels->require(Config::class);
+$orderData = $viewModels->require(Data::class);
+$applePay = $viewModels->require(ApplePay::class);
+?>
+<script>
+    function initCheckoutComApplePay(componentName) {
+
+        const applePayComponent = Magewire.find(componentName);
+        const validationUrl = '<?= $escaper->escapeUrl($block->getUrl('checkout_com/applepay/validation')) ?>';
+        const methodId = 'checkoutcom_apple_pay'
+        let applePaySession = null;
+
+        const applePayConfig = {
+            merchantName: '<?= $escaper->escapeJs($config->getStoreName()) ?>',
+            merchantId: '<?= $escaper->escapeJs($config->getAppleMerchantID()) ?>',
+            country: '<?= $escaper->escapeJs($config->getStoreCountry()) ?>',
+            currency: '<?= $escaper->escapeJs($orderData->getCurrency()) ?>',
+            allowedNetworks: <?= /* @noEscape */ json_encode($applePay->getSupportedNetworks()) ?>,
+            merchantCapabilities: <?= /* @noEscape */ json_encode($config->getAppleMerchantCapabilities()) ?>,
+            buttonStyle: '<?= $escaper->escapeJs($config->getAppleButtonStyle()) ?>',
+            buttonRadius: '<?= $escaper->escapeJs($config->getAppleButtonRadius()) ?>',
+            buttonHeight: '<?= $escaper->escapeJs($config->getAppleButtonHeight()) ?>'
+        };
+
+        function getHighestSupportedApplePayVersion() {
+            return [15, 14, 13].find(version => ApplePaySession.supportsVersion(version)) || 5;
+        }
+
+        function getApplePayPaymentRequest() {
+            const currentTotal = applePayComponent.get('amount');
+
+            return {
+                countryCode: applePayConfig.country,
+                currencyCode: applePayConfig.currency,
+                supportedNetworks: applePayConfig.allowedNetworks,
+                merchantCapabilities: [...applePayConfig.merchantCapabilities, 'supports3DS'],
+                total: {
+                    label: applePayConfig.merchantName,
+                    amount: currentTotal.toFixed(2),
+                    type: 'final'
+                },
+                requiredShippingContactFields: ["email"],
+                requiredBillingContactFields: ["postalAddress"],
+            };
+        }
+
+        function hideLoader() {
+            window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+        }
+
+        function displayError(message) {
+            window.dispatchMessages([{
+                type: 'error',
+                text: message
+            }]);
+            hideLoader();
+        }
+
+        function displayWarning(message) {
+            window.dispatchMessages([{
+                type: 'warning',
+                text: message
+            }]);
+        }
+
+        <?php
+        /**
+         * type and width are hardcoded, please see the resource:
+         * https://developer.apple.com/documentation/applepayontheweb/displaying-apple-pay-buttons-using-javascript
+         * if non-standard appearance is required.
+         */
+        ?>
+        function createApplePayButton() {
+            const button = document.createElement('apple-pay-button');
+
+            button.setAttribute('buttonstyle', applePayConfig.buttonStyle);
+            button.setAttribute('type', 'buy');
+
+            button.style.cssText =
+                `-webkit-appearance: -apple-pay-button; ` +
+                `height: ${applePayConfig.buttonHeight}px; ` +
+                `width: 100%; ` +
+                `border-radius: ${applePayConfig.buttonRadius}px; ` +
+                `cursor: pointer;`;
+
+            button.onclick = onApplePayButtonClick;
+            return button;
+        }
+
+        function onApplePayButtonClick() {
+            try {
+                const version = getHighestSupportedApplePayVersion();
+                const paymentRequest = getApplePayPaymentRequest();
+
+                // The next line must be in a synchronous function triggered directly by the user gesture
+                applePaySession = new window.ApplePaySession(version, paymentRequest);
+
+                applePaySession.onvalidatemerchant = runValidations;
+                applePaySession.onpaymentauthorized = handlePaymentAuthorized;
+                applePaySession.oncancel = hideLoader;
+                applePaySession.begin();
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+            } catch (error) {
+                displayError('Failed to initialize Apple Pay: ' + error.message);
+            }
+        }
+
+        async function runValidations(event) {
+            try {
+                const isValid = await hyvaCheckout.validation.validate();
+
+                if (!isValid) {
+                    displayError('Please complete all required information before proceeding with Apple Pay');
+                    applePaySession.abort();
+                    return;
+                }
+
+                await validateMerchant(event.validationURL);
+            } catch (error) {
+                applePaySession.abort();
+                displayError('Checkout validation error: ' + error.message);
+            }
+        }
+
+        async function validateMerchant(validationURL) {
+            const fullUrl = `${validationUrl}?u=${encodeURIComponent(validationURL)}&method_id=${methodId}`;
+
+            try {
+                const response = await fetch(fullUrl);
+
+                if (!response.ok) {
+                    displayError('Merchant validation failed with status: ' + response.status);
+                    return;
+                }
+
+                const merchantSession = await response.json();
+                applePaySession.completeMerchantValidation(merchantSession);
+            } catch (error) {
+                applePaySession.abort();
+                displayError('Apple Pay merchant validation failed: ' + error.message);
+            }
+        }
+
+        async function handlePaymentAuthorized(event) {
+            try {
+                await applePayComponent.setPaymentToken(event.payment.token);
+                await applePayComponent.placeOrder();
+
+                applePaySession.completePayment(ApplePaySession.STATUS_SUCCESS);
+            } catch (error) {
+                applePaySession.completePayment(ApplePaySession.STATUS_FAILURE);
+                displayError('Error processing payment: ' + error.message);
+            }
+        }
+
+        <?php
+        /**
+         * Alpine component handles the Apple Pay button initialization
+         */
+        ?>
+        return {
+            buttonContainerId: 'ckoApplePayButton-inNavigationContainer',
+            isApplePayAvailable: false,
+            isApplePayButtonRendered: false,
+
+            async setupApplePay() {
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+
+                try {
+                    // Check if ApplePaySession exists and can make payments
+                    if (!window.ApplePaySession || !ApplePaySession.canMakePayments()) {
+                        displayWarning('Apple Pay is not available on this device or browser');
+                        this.isApplePayAvailable = false;
+                        return;
+                    }
+
+                    this.isApplePayAvailable = true;
+                    const buttonContainer = document.getElementById(this.buttonContainerId);
+
+                    if (!buttonContainer) {
+                        displayError('Apple Pay button container not found');
+                        return;
+                    }
+
+                    buttonContainer.innerHTML = '';
+                    const applePayButton = createApplePayButton();
+                    buttonContainer.appendChild(applePayButton);
+                    this.isApplePayButtonRendered = true;
+                    window.dispatchEvent(new CustomEvent('applepay:button:created'));
+                } catch (error) {
+                    displayError('Failed to setup Apple Pay: ' + (error.message || 'Unknown error'));
+                } finally {
+                    hideLoader();
+                }
+            }
+        };
+    }
+</script>

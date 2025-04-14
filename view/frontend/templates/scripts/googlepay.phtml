@@ -27,13 +27,13 @@ $orderData = $viewModels->require(Data::class);
 
         const googlePayConfig = {
             environment: '<?= $escaper->escapeJs($config->getEnvironment()) ?>',
-            merchantId: '<?= $escaper->escapeJs($config->getMerchantId()) ?>',
+            merchantId: '<?= $escaper->escapeJs($config->getGoogleMerchantId()) ?>',
             merchantName: '<?= $escaper->escapeJs($config->getStoreName()) ?>',
             gateway: '<?= $escaper->escapeJs($config->getGatewayName()) ?>',
             gatewayMerchantId: '<?= $escaper->escapeJs($config->getPublicKey()) ?>',
-            buttonColor: '<?= $escaper->escapeJs($config->getButtonStyle()) ?>',
-            buttonRadius: '<?= $escaper->escapeJs($config->getButtonRadius()) ?>',
-            allowedCardNetworks: <?= /** noEscape */ json_encode($config->getAllowedCardNetworks()) ?>,
+            buttonColor: '<?= $escaper->escapeJs($config->getGoogleButtonStyle()) ?>',
+            buttonRadius: '<?= $escaper->escapeJs($config->getGoogleButtonRadius()) ?>',
+            allowedCardNetworks: <?= /** noEscape */ json_encode($config->getGoogleAllowedCardNetworks()) ?>,
             currency: '<?= $escaper->escapeJs($orderData->getCurrency()) ?>'
         };
 
@@ -81,10 +81,16 @@ $orderData = $viewModels->require(Data::class);
             return client.isReadyToPay(isReadyToPayRequest);
         }
 
+        function displayError(message) {
+            window.dispatchMessages([{
+                type: 'error',
+                text: message
+            }]);
+        }
+
         function renderButton(client, containerId, onButtonClick) {
             const container = document.getElementById(containerId);
             if (!container) {
-                console.error('GooglePay: Button container not found:', containerId);
                 return false;
             }
 
@@ -138,7 +144,6 @@ $orderData = $viewModels->require(Data::class);
 
         async function processPayment(paymentData) {
             try {
-                // Extract token data from payment response
                 let tokenData;
                 if (paymentData.paymentMethodData?.tokenizationData?.token) {
                     const tokenString = paymentData.paymentMethodData.tokenizationData.token;
@@ -151,12 +156,8 @@ $orderData = $viewModels->require(Data::class);
                     };
                 }
 
-                // Check if we have valid token data
                 if (!tokenData) {
-                    window.dispatchMessages([{
-                        type: 'error',
-                        text: 'Invalid payment data received from Google Pay'
-                    }]);
+                    displayError('Invalid payment data received from Google Pay');
                     return false;
                 }
 
@@ -166,10 +167,7 @@ $orderData = $viewModels->require(Data::class);
 
                 return true;
             } catch (error) {
-                window.dispatchMessages?.([{
-                    type: 'error',
-                    text: 'Failed to process Google Pay payment: ' + error.message
-                }]);
+                displayError('Failed to process Google Pay payment: ' + error.message);
                 return false;
             }
         }
@@ -181,10 +179,7 @@ $orderData = $viewModels->require(Data::class);
             // First, validate all required checkout fields using Hyva Checkout validation API
             hyvaCheckout.validation.validate().then(isValid => {
                 if (!isValid) {
-                    window.dispatchMessages([{
-                        type: 'error',
-                        text: 'Please complete all required information before proceeding with Google Pay'
-                    }]);
+                    displayError('Please complete all required information before proceeding with Google Pay');
                     return;
                 }
 
@@ -194,7 +189,6 @@ $orderData = $viewModels->require(Data::class);
                     // Create payment request with current total
                     const paymentDataRequest = createPaymentDataRequest(currentTotal);
 
-                    // Request payment data
                     client.loadPaymentData(paymentDataRequest)
                         .then(paymentData => {
                             return processPayment(paymentData);
@@ -204,24 +198,15 @@ $orderData = $viewModels->require(Data::class);
                         })
                         .catch(error => {
                             if (error.statusCode !== 'CANCELED') {
-                                window.dispatchMessages?.([{
-                                    type: 'error',
-                                    text: 'Error with Google Pay: ' + (error.message || 'Unknown error')
-                                }]);
+                                displayError('Error with Google Pay: ' + (error.message || 'Unknown error');
                             }
                         });
                 } catch (error) {
                     window.dispatchEvent(new CustomEvent('magewire:loader:done'));
-                    window.dispatchMessages([{
-                        type: 'error',
-                        text: 'Error initiating Google Pay: ' + error.message
-                    }]);
+                    displayError('Error initiating Google Pay: ' + error.message);
                 }
             }).catch(exception => {
-                window.dispatchMessages([{
-                    type: 'error',
-                    text: 'Unable to validate checkout information'
-                }]);
+                displayError('Unable to validate checkout information');
             });
         }
 
@@ -257,21 +242,14 @@ $orderData = $viewModels->require(Data::class);
                             // Arrow function to preserve 'this' context
                             () => onGooglePayButtonClick(client)
                         );
-                        // This event is needed in smart-button.phtml to show/hide button
                         window.dispatchEvent(new CustomEvent('googlepay:button:created'));
 
                     } else {
                         this.isGooglePayAvailable = false;
-                        window.dispatchMessages([{
-                            type: 'warning',
-                            text: 'Google Pay is not available on this device or browser'
-                        }]);
+                        displayError('Google Pay is not available on this device or browser');
                     }
                 } catch (error) {
-                    window.dispatchMessages([{
-                        type: 'error',
-                        text: 'Failed to setup Google Pay: ' + error.message
-                    }]);
+                    displayError('Failed to setup Google Pay: ' + error.message);
                 } finally {
                     window.dispatchEvent(new CustomEvent('magewire:loader:done'));
                 }
