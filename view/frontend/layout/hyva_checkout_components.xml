@@ -10,11 +10,6 @@
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd"
 >
     <body>
-        <referenceContainer name="checkout.payment.methods.before">
-            <block name="checkout.payment.method.checkoutcom.applepay-visibility"
-                   template="Magebit_CheckoutComPayment::scripts/applepay-method-visibility.phtml">
-            </block>
-        </referenceContainer>
         <referenceBlock name="checkout.payment.methods">
             <block name="checkout.payment.method.checkoutcom.card"
                    as="checkoutcom_card_payment"
