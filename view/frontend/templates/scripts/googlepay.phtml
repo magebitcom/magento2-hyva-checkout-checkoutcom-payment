@@ -198,7 +198,7 @@ $orderData = $viewModels->require(Data::class);
                         })
                         .catch(error => {
                             if (error.statusCode !== 'CANCELED') {
-                                displayError('Error with Google Pay: ' + (error.message || 'Unknown error');
+                                displayError('Error with Google Pay: ' + (error.message || 'Unknown error'));
                             }
                         });
                 } catch (error) {
