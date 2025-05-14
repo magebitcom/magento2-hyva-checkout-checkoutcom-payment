@@ -343,7 +343,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
         return $this->urlRedirect;
     }
 
-    private function getApmData(): array
+    public function getApmData(): array
     {
         $selectedApm = $this->session->getData(CheckoutComApm::SELECTED_APM);
         $apmData = $this->session->getData(CheckoutComApm::APM_DATA) ?: [];

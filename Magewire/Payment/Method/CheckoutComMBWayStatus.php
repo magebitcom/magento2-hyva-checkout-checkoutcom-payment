@@ -78,7 +78,6 @@ class CheckoutComMBWayStatus extends Component
         try {
             $orderId = $this->checkoutSession->getLastRealOrder()->getIncrementId();
             if (!$orderId) {
-                $this->orderIncrement = '';
                 $this->stopPolling();
                 return;
             }

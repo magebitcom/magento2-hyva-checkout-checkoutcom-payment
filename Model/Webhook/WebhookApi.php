@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace Magebit\CheckoutComPayment\Model\Webhook;
 
+use CheckoutCom\Magento2\Gateway\Config\Config as GatewayConfig;
 use CheckoutCom\Magento2\Model\Service\OrderStatusHandlerService;
 use Magebit\CheckoutComPayment\Api\WebhookInterface;
 use Magebit\CheckoutComPayment\Helper\Config;
 use Magento\Framework\Api\SearchCriteriaBuilder;
-use CheckoutCom\Magento2\Gateway\Config\Config as GatewayConfig;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Serialize\Serializer\Json;
@@ -73,7 +73,7 @@ class WebhookApi implements WebhookInterface
      * @param array $headers
      * @throws LocalizedException
      */
-    private function verifyWebhook(string $payload, array $headers): void
+    public function verifyWebhook(string $payload, array $headers): void
     {
         $authorization = $headers['Authorization'] ?? '';
         $isAuthValid = $authorization === $this->config->getAuthHeaderKey();
@@ -89,7 +89,7 @@ class WebhookApi implements WebhookInterface
      * @param array $data
      * @return array|null
      */
-    private function extractWebhookData(array $data): ?array
+    public function extractWebhookData(array $data): ?array
     {
         $sourceData = $data['data'] ?? $data;
 
@@ -111,7 +111,7 @@ class WebhookApi implements WebhookInterface
      * @param array $paymentData
      * @return void
      */
-    private function processPayment(array $paymentData): void
+    public function processPayment(array $paymentData): void
     {
         $reference = $paymentData['reference'];
         $responseCode = $paymentData['response_code'] ?? '';
@@ -137,22 +137,21 @@ class WebhookApi implements WebhookInterface
                 $order->setState(Order::STATE_PROCESSING);
                 $order->setStatus(Order::STATE_PROCESSING);
                 $this->orderRepository->save($order);
+
             } else {
                 // All other response codes indicate failed payment
                 $payment = $order->getPayment();
                 $payment->setAdditionalInformation('response_summary', $paymentData['response_summary']);
-                $this->logger->info('Updated payment additional information', [
-                    'order_increment' => $order->getIncrementId(),
-                    'response_summary' => $paymentData['response_summary']
-                ]);
                 $this->orderRepository->save($order);
+
                 if ($this->gatewayConfig->isPaymentWithOrderFirst()) {
                     $this->orderStatusHandler->handleFailedPayment($order, $webhookData['event_type']);
                 }
             }
 
         } catch (\Exception $e) {
-            $this->logger->warning($e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Failed to retrieve order by increment ID', ['exception' => $e]);
+            return;
         }
     }
 
@@ -162,7 +161,7 @@ class WebhookApi implements WebhookInterface
      * @param string $incrementId
      * @return OrderInterface|null
      */
-    private function getOrderByIncrementId(string $incrementId): ?OrderInterface
+    public function getOrderByIncrementId(string $incrementId): ?OrderInterface
     {
         try {
             $searchCriteria = $this->searchCriteriaBuilder
@@ -187,7 +186,7 @@ class WebhookApi implements WebhookInterface
      * @param string $responseCode
      * @return string
      */
-    private function mapResponseToEventType(string $responseCode): string
+    public function mapResponseToEventType(string $responseCode): string
     {
         return match ($responseCode) {
             '10000' => 'payment_approved',
