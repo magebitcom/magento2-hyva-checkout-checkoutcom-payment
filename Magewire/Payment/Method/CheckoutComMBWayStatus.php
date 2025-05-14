@@ -27,6 +27,12 @@ class CheckoutComMBWayStatus extends Component
     public string $orderIncrement = '';
     public bool $isPolling = true;
 
+    private array $processingStatuses = [
+        Order::STATE_PROCESSING,
+        'processing',
+        'complete'
+    ];
+
     /**
      * @param CheckoutSession $checkoutSession
      * @param OrderRepositoryInterface $orderRepository
@@ -111,7 +117,8 @@ class CheckoutComMBWayStatus extends Component
 
                 $this->stopPolling();
                 $this->redirect('hyva_checkout/index');
-            } else {
+
+            } elseif (in_array($orderStatus, $this->processingStatuses)) {
                 $this->stopPolling();
                 $this->redirect('checkout/onepage/success');
             }
