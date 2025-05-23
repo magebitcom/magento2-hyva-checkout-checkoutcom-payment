@@ -61,3 +61,11 @@ CSS `px` unit in this option input field.
 * Enable MB WAY Phone Validation
 
 This option sets strict phone validation for MB WAY phone numbers (must be 9 digits and start with 9).
+
+### Webhook Configuration for MB WAY Payments
+
+MB WAY payments require webhook configuration to properly handle payment status updates.
+The extension includes a custom webhook endpoint that processes payment notifications from Checkout.com.
+
+Endpoint URL: https://your-domain.com/rest/V1/checkout-com/webhook
+Authorization header key: Use the same value you set in Magento's "Authorization Header Key" field
