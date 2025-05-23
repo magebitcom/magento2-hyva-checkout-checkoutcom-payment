@@ -42,6 +42,16 @@
                     </argument>
                 </arguments>
             </block>
+            <block name="checkout.payment.method.checkoutcom.applepay"
+                   as="checkoutcom_apple_pay"
+                   template="Magebit_CheckoutComPayment::component/payment/method/applepay.phtml"
+                   ifconfig="payment/checkoutcom_apple_pay/active">
+                <arguments>
+                    <argument name="magewire" xsi:type="object">
+                        Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApplePay
+                    </argument>
+                </arguments>
+            </block>
             <block name="checkout.payment.method.checkoutcom.apm"
                    as="checkoutcom_apm"
                    template="Magebit_CheckoutComPayment::component/payment/method/apm.phtml"

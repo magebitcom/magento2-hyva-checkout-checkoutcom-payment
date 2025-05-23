@@ -1,0 +1,23 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApplePay;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var CheckoutComApplePay $magewire */
+/** @var Escaper $escaper */
+?>
+
+<div x-data="initCheckoutComApplePay('<?= $escaper->escapeJs($block->getNameInLayout()) ?>')"
+     x-init="setupApplePay()">
+
+    <?= $escaper->escapeHtml(__('Please use Apple Pay button to complete the order.')) ?>
+</div>

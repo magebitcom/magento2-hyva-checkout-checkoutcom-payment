@@ -1,0 +1,107 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Hyva\Checkout\ViewModel\Navigation;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+/** @var Escaper $escaper */
+/** @var Navigation $viewModel */
+
+$viewModel = $viewModels->require(Navigation::class);
+$navigator = $viewModel->getNavigator();
+$checkout  = $navigator->getActiveCheckout();
+$next      = $checkout->getStepAfter($navigator->getActiveStep())
+?>
+<?php if ($next === null): ?>
+    <div x-data="checkoutButtons()" x-init="initButtons()">
+        <button type="button"
+                class="btn btn-primary bg-green-700 hover:bg-green-600 btn-place-order"
+                x-spread="buttonPlaceOrder()"
+                x-bind="buttonPlaceOrder()"
+                x-show="showPlaceOrderButton"
+        >
+            <?= $escaper->escapeHtml(__('Place Order')) ?>
+        </button>
+        <div class="wallet-buttons space-y-2">
+            <div id="checkoutcom-applepay-button-container" class="h-10" x-show="showApplePayButton">
+                <div id="ckoApplePayButton-inNavigationContainer">
+                    <!-- Apple Pay button will be rendered here -->
+                </div>
+            </div>
+            <div id="checkoutcom-googlepay-button-container" class="h-10" x-show="showGooglePayButton">
+                <div id="ckoGooglePayButton-inNavigationContainer">
+                    <!-- Google Pay button will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function checkoutButtons() {
+            return {
+                showPlaceOrderButton: true,
+                showApplePayButton: false,
+                showGooglePayButton: false,
+
+                handlePaymentMethodChange(event) {
+                    const method = event.detail?.method;
+
+                    this.showPlaceOrderButton = true;
+                    this.showApplePayButton = false;
+                    this.showGooglePayButton = false;
+
+                    if (method === 'checkoutcom_apple_pay') {
+                        this.showApplePayButton = true;
+                        this.showPlaceOrderButton = false;
+                    } else if (method === 'checkoutcom_google_pay') {
+                        this.showGooglePayButton = true;
+                        this.showPlaceOrderButton = false;
+                    }
+                },
+
+                initButtons() {
+                    window.addEventListener('checkout:payment:method-activate',
+                        this.handlePaymentMethodChange.bind(this));
+
+                    window.addEventListener('applepay:button:created', () => {
+                        if (document.querySelector('input[value="checkoutcom_apple_pay"]:checked')) {
+                            this.showApplePayButton = true;
+                            this.showPlaceOrderButton = false;
+                        }
+                    });
+
+                    window.addEventListener('googlepay:button:created', () => {
+                        if (document.querySelector('input[value="checkoutcom_google_pay"]:checked')) {
+                            this.showGooglePayButton = true;
+                            this.showPlaceOrderButton = false;
+                        }
+                    });
+
+                    // Check if a wallet payment method is already selected (e.g. on page reload)
+                    setTimeout(() => {
+                        const applePaySelected = document.querySelector('input[value="checkoutcom_apple_pay"]:checked');
+                        const googlePaySelected = document.querySelector('input[value="checkoutcom_google_pay"]:checked');
+
+                        if (applePaySelected) {
+                            this.showApplePayButton = true;
+                            this.showPlaceOrderButton = false;
+                        } else if (googlePaySelected) {
+                            this.showGooglePayButton = true;
+                            this.showPlaceOrderButton = false;
+                        }
+                    }, 100);
+                }
+            };
+        }
+    </script>
+<?php endif ?>

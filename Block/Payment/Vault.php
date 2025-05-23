@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace Magebit\CheckoutComPayment\Block\Payment;
 
-use Magento\Framework\View\Element\Template\Context;
 use Magento\Framework\View\Element\Template;
+use Magento\Framework\View\Element\Template\Context;
 use CheckoutCom\Magento2\Gateway\Config\Config;
 use CheckoutCom\Magento2\Model\Service\VaultHandlerService;
 use Magento\Framework\View\Result\PageFactory;

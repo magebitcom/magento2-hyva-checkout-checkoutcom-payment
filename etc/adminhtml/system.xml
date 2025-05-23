@@ -26,6 +26,20 @@
                         <validate>validate-number validate-zero-or-greater</validate>
                     </field>
                 </group>
+                <group id="checkoutcom_apple_pay">
+                    <field id="apple_pay_button_radius" translate="label" type="text" sortOrder="45" showInDefault="1" showInWebsite="1" showInStore="0">
+                        <label>Button corner radius</label>
+                        <config_path>payment/checkoutcom_apple_pay/button_radius</config_path>
+                        <comment>Measured in pixels (px). Default is 8px (Hyva Checkout styling)</comment>
+                        <validate>validate-number validate-zero-or-greater</validate>
+                    </field>
+                    <field id="apple_pay_button_height" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                        <label>Button height</label>
+                        <config_path>payment/checkoutcom_apple_pay/button_height</config_path>
+                        <comment>Measured in pixels (px). Default is 40px (Hyva Checkout styling)</comment>
+                        <validate>validate-number validate-zero-or-greater</validate>
+                    </field>
+                </group>
             </group>
         </section>
     </system>

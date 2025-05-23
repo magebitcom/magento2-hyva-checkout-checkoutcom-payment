@@ -19,12 +19,13 @@
             <block name="checkoutcom-googlepay-script"
                    template="Magebit_CheckoutComPayment::scripts/googlepay.phtml"
                    ifconfig="payment/checkoutcom_google_pay/active" />
+            <block name="checkoutcom-applepay-script"
+                   template="Magebit_CheckoutComPayment::scripts/applepay.phtml"
+                   ifconfig="payment/checkoutcom_apple_pay/active" />
         </referenceContainer>
-        <referenceContainer name="hyva.checkout.navigation.right">
-            <block name="checkout.place-order.google-pay"
-                   template="Magebit_CheckoutComPayment::component/payment/method/googlepay/smart-button.phtml"
-                   after="checkout.place-order"
-            />
-        </referenceContainer>
+
+        <referenceBlock name="checkout.place-order"
+               template="Magebit_CheckoutComPayment::navigation/place-order.phtml"
+        />
     </body>
 </page>

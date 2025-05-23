@@ -14,9 +14,12 @@
                 <mb_pay_phone_validation>0</mb_pay_phone_validation>
             </checkoutcom_apm>
             <checkoutcom_google_pay>
-                <google_pay_replace_place_order>0</google_pay_replace_place_order>
                 <google_pay_button_radius>8</google_pay_button_radius>
             </checkoutcom_google_pay>
+            <checkoutcom_apple_pay>
+                <apple_pay_button_radius>8</apple_pay_button_radius>
+                <apple_pay_button_height>40</apple_pay_button_height>
+            </checkoutcom_apple_pay>
         </payment>
     </default>
 </config>
