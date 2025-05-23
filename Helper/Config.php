@@ -433,4 +433,17 @@ class Config extends AbstractHelper implements ArgumentInterface
             ScopeInterface::SCOPE_STORE,
         ) ?? 40;
     }
+
+    /**
+     * Webhook authorization header key
+     *
+     * @return string
+     */
+    public function getAuthHeaderKey(): string
+    {
+        return $this->scopeConfig->getValue(
+            'settings/checkoutcom_configuration/private_shared_key',
+            ScopeInterface::SCOPE_STORE
+        );
+    }
 }

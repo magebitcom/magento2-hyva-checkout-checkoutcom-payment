@@ -19,13 +19,13 @@ use CheckoutCom\Magento2\Model\Service\OrderStatusHandlerService;
 use CheckoutCom\Magento2\Model\Service\PaymentErrorHandlerService;
 use CheckoutCom\Magento2\Model\Service\QuoteHandlerService;
 use Exception;
-use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApm;
-use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
-use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComGooglePay;
-use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApplePay;
-use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComVault;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractOrderData;
 use Hyva\Checkout\Model\Magewire\Payment\AbstractPlaceOrderService;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApm;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComApplePay;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComGooglePay;
+use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComVault;
 use Magento\Checkout\Model\Session;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Exception\LocalizedException;
@@ -173,10 +173,14 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                     // Process the response
                     $api = $this->apiHandler->init($storeCode, ScopeInterface::SCOPE_STORE);
 
-                    $isValidResponse = $api->isValidResponse($response);
-
-                    // Check if Google Pay response is declined
+                    // Check if response is declined immediately
                     $isDeclined = isset($response['status']) && $response['status'] === 'Declined';
+
+                    // Check if it's MB WAY payment
+                    $isMbWay = isset($data['source']) && $data['source'] === 'mbway';
+
+                    // Standard API response validation
+                    $isValidResponse = $api->isValidResponse($response);
 
                     if ($isValidResponse && !$isDeclined) {
                         // Create an order if processing is payment first
@@ -185,13 +189,19 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                         // Add the payment info to the order
                         $order = $this->utilities->setPaymentData($order, $response, $data);
 
-                        // set order status to pending payment
-                        // $order->setStatus(Order::STATE_PENDING_PAYMENT);
+                        // Set order status to pending payment
                         $order->setStatus('awaiting_payment');
 
-                        // check for redirection
+                        // Check for redirection
                         if (isset($response['_links']['redirect']['href'])) {
                             $url = $response['_links']['redirect']['href'];
+                        }
+
+                        // Special handling for MB WAY
+                        if ($isMbWay) {
+
+                            // Redirect to a waiting page instead of success
+                            $this->setUrlRedirect('checkout_com/onepage/status');
                         }
 
                         // Save the order
@@ -333,7 +343,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
         return $this->urlRedirect;
     }
 
-    private function getApmData(): array
+    public function getApmData(): array
     {
         $selectedApm = $this->session->getData(CheckoutComApm::SELECTED_APM);
         $apmData = $this->session->getData(CheckoutComApm::APM_DATA) ?: [];
