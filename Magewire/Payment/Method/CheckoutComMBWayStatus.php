@@ -218,42 +218,60 @@ class CheckoutComMBWayStatus extends Component
     private function handleWebhookEvent(string $eventType, array $eventData): void
     {
         $responseCode = $eventData['response_code'] ??
-                       $eventData['data']['response_code'] ??
-                       null;
+            $eventData['data']['response_code'] ??
+            null;
 
         $responseSummary = $eventData['response_summary'] ??
-                          $eventData['data']['response_summary'] ??
-                          'Unknown';
+            $eventData['data']['response_summary'] ??
+            'Unknown';
 
-        $additionalSuccess = $this->isEventInAdditionalSuccessStates($eventType);
-        $successByType = in_array($eventType, $this->processingStatuses, true) || $additionalSuccess;
-        $failedByType = in_array($eventType, $this->failedStatuses, true);
+        // Check if event is configured as additional success state
+        $isAdditionalSuccessState = $this->isEventInAdditionalSuccessStates($eventType);
 
-        $successByCode = ($responseCode === '10000');
-        $failedByCode = ($responseCode !== null && (int)$responseCode >= 20000);
-
-        if ($successByCode || $successByType) {
+        // Check response code first - 10000 means approved regardless of event type
+        // OR if admin has configured this event type as additional success state
+        if ($responseCode === '10000' || $isAdditionalSuccessState) {
+            // Payment successful - redirect to success page
             $this->stopPolling();
             $this->redirect('checkout/onepage/success');
             return;
         }
 
-        if ($failedByCode || $failedByType) {
+        // Check for failure response codes (20000+)
+        if ($responseCode && (int)$responseCode >= 20000) {
+            // Payment failed - restore quote and redirect to checkout
             $this->checkoutSession->restoreQuote();
+
             $this->messageManager->addErrorMessage(
                 __('Your payment was declined. Reason: %1', $responseSummary)
             );
+
             $this->stopPolling();
             $this->redirect('hyva_checkout/index');
             return;
         }
 
-        if ($eventType === 'payment_pending' || $eventType === 'payment_capture_pending') {
-            return;
-        }
+        if (in_array($eventType, $this->processingStatuses)) {
+            // Payment successful - redirect to success page
+            $this->stopPolling();
+            $this->redirect('checkout/onepage/success');
+        } elseif (in_array($eventType, $this->failedStatuses)) {
+            // Payment failed - restore quote and redirect to the checkout
+            $this->checkoutSession->restoreQuote();
 
-        $this->logger->warning('MB WAY: unknown/unhandled event - stop polling');
-        $this->stopPolling();
+            $this->messageManager->addErrorMessage(
+                __('Your payment was declined. Reason: %1', $responseSummary)
+            );
+
+            $this->stopPolling();
+            $this->redirect('hyva_checkout/index');
+        } elseif (in_array($eventType, ['payment_pending', 'payment_capture_pending'])) {
+            // Continue polling for pending payments (unless we have a definitive response code)
+            return;
+        } else {
+            // Unknown event type - log and stop polling
+            $this->stopPolling();
+        }
     }
 
     /**
