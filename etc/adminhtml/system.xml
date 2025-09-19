@@ -17,6 +17,23 @@
                         <config_path>payment/checkoutcom_apm/mb_pay_phone_validation</config_path>
                         <comment>Enable strict validation for MB WAY phone numbers (must be 9 digits and start with 9)</comment>
                     </field>
+                    <field id="mb_way_status_text" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>MB WAY Status Page Text</label>
+                        <config_path>payment/checkoutcom_apm/mb_way_status_text</config_path>
+                        <comment>Text displayed on the MB WAY payment status page while waiting for payment confirmation</comment>
+                    </field>
+                    <field id="mb_way_polling_interval" translate="label" type="text" sortOrder="55" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>MB WAY Status Polling Interval (milliseconds)</label>
+                        <config_path>payment/checkoutcom_apm/mb_way_polling_interval</config_path>
+                        <comment>How often to check for new webhooks (in milliseconds). Default is 5000ms (5 seconds)</comment>
+                        <validate>validate-number validate-greater-than-zero</validate>
+                    </field>
+                    <field id="mb_way_additional_success_states" type="multiselect" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                        <label>Additional success states</label>
+                        <source_model>Magebit\CheckoutComPayment\Model\Config\Backend\Source\AdditionalSuccessStates</source_model>
+                        <config_path>payment/checkoutcom_apm/mb_way_additional_success_states</config_path>
+                        <comment>You can select additional webhook events which will trigger order success page. This is not recommended because orders can actually fail after these events.</comment>
+                    </field>
                 </group>
                 <group id="checkoutcom_google_pay">
                     <field id="google_pay_button_radius" translate="label" type="text" sortOrder="45" showInDefault="1" showInWebsite="1" showInStore="0">

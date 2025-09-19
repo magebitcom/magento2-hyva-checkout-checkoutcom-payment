@@ -65,7 +65,20 @@ This option sets strict phone validation for MB WAY phone numbers (must be 9 dig
 ### Webhook Configuration for MB WAY Payments
 
 MB WAY payments require webhook configuration to properly handle payment status updates.
-The extension includes a custom webhook endpoint that processes payment notifications from Checkout.com.
 
-Endpoint URL: https://your-domain.com/rest/V1/checkout-com/webhook
-Authorization header key: Use the same value you set in Magento's "Authorization Header Key" field
+The extension use default endpoint URL: https://your-domain.com/checkout_com/webhook/callback which is the same for 
+CheckoutCom_Magento2 module.
+
+* MB WAY Status Page Text
+
+Text on waiting page while waiting on webhook events is customizable.
+
+* MB WAY Status Polling Interval
+
+Option to adjust interval at which customer waiting page will look for webhook updates. Recommended value is 3-5 seconds.
+
+* Additional success states
+
+By default, the waiting page will result in success page only if webhook with response code '10000' is received. This
+config makes it possible to also select "Payment Pending" and "Payment Capture Pending" as a signal to redirect customer to success page
+although after this redirect the order still might get automatically cancelled for example because of "Transaction has expired" error.

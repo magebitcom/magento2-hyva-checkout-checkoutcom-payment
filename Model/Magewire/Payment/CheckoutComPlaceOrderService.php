@@ -199,8 +199,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
 
                         // Special handling for MB WAY
                         if ($isMbWay) {
-
-                            // Redirect to a waiting page instead of success
+                            // Redirect to waiting page - order increment will be retrieved from getLastRealOrder()
                             $this->setUrlRedirect('checkout_com/onepage/status');
                         }
 
