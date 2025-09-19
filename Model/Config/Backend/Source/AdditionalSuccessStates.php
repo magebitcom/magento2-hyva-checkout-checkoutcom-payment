@@ -22,6 +22,7 @@ class AdditionalSuccessStates implements OptionSourceInterface
     public function toOptionArray(): array
     {
         return [
+            ['value' => '', 'label' => __('-- None --')],
             ['value' => 'payment_pending', 'label' => __('Payment Pending')],
             ['value' => 'payment_capture_pending', 'label' => __('Payment Capture Pending')],
         ];
