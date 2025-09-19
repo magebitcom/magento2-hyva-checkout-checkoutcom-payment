@@ -26,9 +26,6 @@ class CheckoutComMBWayStatus extends Component
     public string $orderStatus = '';
     public string $orderIncrement = '';
     public bool $isPolling = true;
-
-    public int $lastCheckedWebhookId = 0;
-
     public array $processingStatuses = [
         'payment_approved',
         'payment_captured'
@@ -122,33 +119,29 @@ class CheckoutComMBWayStatus extends Component
                 return;
             }
 
-            // Process all new webhooks (since lastCheckedWebhookId) in chronological order
+            $allEvents = [];
+
             foreach ($matchingWebhooks as $webhook) {
-                $currentId = (int)$webhook['id'];
-
-                // Safety check (query already filters > lastCheckedWebhookId)
-                if ($currentId <= $this->lastCheckedWebhookId) {
-                    continue;
-                }
-
                 try {
                     $eventData = $this->jsonSerializer->unserialize($webhook['event_data']);
                     $eventType = $webhook['event_type'];
-                    $this->handleWebhookEvent($eventType, $eventData);
 
-                    // Mark as processed
-                    $this->lastCheckedWebhookId = $currentId;
-
-                    // Stop if terminal status reached (redirect/stopPolling was called)
-                    if (!$this->isPolling) {
-                        break;
-                    }
+                    $allEvents[] = [
+                        'id' => $webhook['id'],
+                        'type' => $eventType,
+                        'data' => $eventData
+                    ];
                 } catch (Exception $e) {
                     $this->logger->error('Failed to parse webhook event data', [
                         'webhook_id' => $webhook['id'],
                         'error' => $e->getMessage()
                     ]);
                 }
+            }
+
+            // Determine the most definitive status from all events
+            if (!empty($allEvents)) {
+                $this->handleMultipleWebhookEvents($allEvents);
             }
         } catch (Exception $e) {
             $this->logger->error('Error checking order status via webhooks', [
@@ -161,7 +154,7 @@ class CheckoutComMBWayStatus extends Component
     }
 
     /**
-     * Get webhooks for specific order using direct database query
+     * Get all webhooks for specific order using direct database query
      *
      * @param string $orderIncrement
      * @return array
@@ -172,12 +165,11 @@ class CheckoutComMBWayStatus extends Component
             $connection = $this->resourceConnection->getConnection();
             $tableName = $this->resourceConnection->getTableName('checkoutcom_webhooks');
 
-            // Query to find webhooks where event_data JSON contains the reference
+            // Query to find all webhooks where event_data JSON contains the reference
             $select = $connection->select()
                 ->from($tableName, ['id', 'event_type', 'event_data', 'received_at', 'order_id'])
                 ->where('event_data LIKE ?', '%"reference":"' . $orderIncrement . '"%')
-                ->where('id > ?', (int)$this->lastCheckedWebhookId)
-                ->order('id ASC'); // process in chronological order
+                ->order('id ASC');
 
             $webhooks = $connection->fetchAll($select);
 
@@ -209,69 +201,74 @@ class CheckoutComMBWayStatus extends Component
     }
 
     /**
-     * Handle webhook event based on event type
+     * Handle multiple webhook events and determine the most definitive status
      *
-     * @param string $eventType
-     * @param array $eventData
+     * @param array $allEvents
      * @return void
      */
-    private function handleWebhookEvent(string $eventType, array $eventData): void
+    private function handleMultipleWebhookEvents(array $allEvents): void
     {
-        $responseCode = $eventData['response_code'] ??
-            $eventData['data']['response_code'] ??
-            null;
+        $hasSuccessCode = false;
+        $hasFailureCode = false;
+        $hasFailureEvent = false;
+        $hasAdditionalSuccessEvent = false;
+        $lastResponseSummary = 'Unknown';
 
-        $responseSummary = $eventData['response_summary'] ??
-            $eventData['data']['response_summary'] ??
-            'Unknown';
+        // Analyze all events to find the most definitive status
+        foreach ($allEvents as $event) {
+            $eventType = $event['type'];
+            $eventData = $event['data'];
 
-        // Check if event is configured as additional success state
-        $isAdditionalSuccessState = $this->isEventInAdditionalSuccessStates($eventType);
+            $responseCode = $eventData['response_code'] ?? $eventData['data']['response_code'] ?? null;
+            $responseSummary = $eventData['response_summary'] ?? $eventData['data']['response_summary'] ?? 'Unknown';
 
-        // Check response code first - 10000 means approved regardless of event type
-        // OR if admin has configured this event type as additional success state
-        if ($responseCode === '10000' || $isAdditionalSuccessState) {
-            // Payment successful - redirect to success page
+            if ($responseSummary !== 'Unknown') {
+                $lastResponseSummary = $responseSummary;
+            }
+
+            // Check for definitive success (response code 10000)
+            if ($responseCode === '10000' || $responseCode === 10000) {
+                $hasSuccessCode = true;
+            }
+
+            // Check for definitive failure (response code 20000+)
+            if ($responseCode && (int)$responseCode >= 20000) {
+                $hasFailureCode = true;
+            }
+
+            // Check for success by event type
+            if (in_array($eventType, $this->processingStatuses, true)) {
+                $hasSuccessEvent = true;
+            }
+
+            // Check for failure by event type
+            if (in_array($eventType, $this->failedStatuses, true)) {
+                $hasFailureEvent = true;
+            }
+
+            // Check for admin-configured additional success events
+            if ($this->isEventInAdditionalSuccessStates($eventType)) {
+                $hasAdditionalSuccessEvent = true;
+            }
+        }
+
+        if ($hasSuccessCode || $hasAdditionalSuccessEvent) {
             $this->stopPolling();
             $this->redirect('checkout/onepage/success');
             return;
         }
 
-        // Check for failure response codes (20000+)
-        if ($responseCode && (int)$responseCode >= 20000) {
-            // Payment failed - restore quote and redirect to checkout
+        if ($hasFailureCode || $hasFailureEvent) {
             $this->checkoutSession->restoreQuote();
-
             $this->messageManager->addErrorMessage(
-                __('Your payment was declined. Reason: %1', $responseSummary)
+                __('Your payment was declined. Reason: %1', $lastResponseSummary)
             );
-
             $this->stopPolling();
             $this->redirect('hyva_checkout/index');
             return;
         }
 
-        if (in_array($eventType, $this->processingStatuses)) {
-            // Payment successful - redirect to success page
-            $this->stopPolling();
-            $this->redirect('checkout/onepage/success');
-        } elseif (in_array($eventType, $this->failedStatuses)) {
-            // Payment failed - restore quote and redirect to the checkout
-            $this->checkoutSession->restoreQuote();
-
-            $this->messageManager->addErrorMessage(
-                __('Your payment was declined. Reason: %1', $responseSummary)
-            );
-
-            $this->stopPolling();
-            $this->redirect('hyva_checkout/index');
-        } elseif (in_array($eventType, ['payment_pending', 'payment_capture_pending'])) {
-            // Continue polling for pending payments (unless we have a definitive response code)
-            return;
-        } else {
-            // Unknown event type - log and stop polling
-            $this->stopPolling();
-        }
+        // If we reach here, all events are pending or unknown - continue polling
     }
 
     /**
