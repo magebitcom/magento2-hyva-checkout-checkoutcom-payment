@@ -68,40 +68,4 @@ class WebhookHandlerServicePlugin
 
         return [$order, $payload];
     }
-
-    /**
-     * Intercept webhook processing errors and provide more tolerant handling
-     *
-     * @param WebhookHandlerService $subject
-     * @param callable $proceed
-     * @param OrderInterface $order
-     * @param array $payload
-     * @return mixed
-     * @throws Throwable
-     */
-    public function aroundProcessSingleWebhook(
-        WebhookHandlerService $subject,
-        callable $proceed,
-        OrderInterface $order,
-        array $payload
-    ) {
-        try {
-            return $proceed($order, $payload);
-        } catch (Throwable $e) {
-            $eventType = $payload['type'] ?? 'unknown';
-            $responseCode = $payload['data']['response_code'] ??
-                           $payload['response_code'] ?? null;
-
-            // If this is a successful payment_captured event that failed due to out-of-order webhook issues,
-            if ($eventType === 'payment_captured' && $responseCode === '10000') {
-
-                // For successful captures, we can return success to prevent Checkout.com retries
-                // The MB WAY status component will handle the payment status appropriately
-                return true;
-            }
-
-            // For other webhook types or failed payments, re-throw the exception
-            throw $e;
-        }
-    }
 }

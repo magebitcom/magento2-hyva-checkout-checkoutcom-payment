@@ -236,11 +236,6 @@ class CheckoutComMBWayStatus extends Component
                 $hasFailureCode = true;
             }
 
-            // Check for success by event type
-            if (in_array($eventType, $this->processingStatuses, true)) {
-                $hasSuccessEvent = true;
-            }
-
             // Check for failure by event type
             if (in_array($eventType, $this->failedStatuses, true)) {
                 $hasFailureEvent = true;
@@ -267,7 +262,6 @@ class CheckoutComMBWayStatus extends Component
             $this->redirect('hyva_checkout/index');
             return;
         }
-
         // If we reach here, all events are pending or unknown - continue polling
     }
 

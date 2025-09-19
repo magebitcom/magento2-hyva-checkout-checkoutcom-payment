@@ -10,5 +10,7 @@
     <type name="CheckoutCom\Magento2\Model\Service\WebhookHandlerService">
         <plugin name="magebit_checkoutcom_webhook_handler_normalize_action_id"
                 type="Magebit\CheckoutComPayment\Plugin\Service\WebhookHandlerServicePlugin"/>
+        <plugin name="magebit_checkoutcom_webhook_check_auth"
+                type="Magebit\CheckoutComPayment\Plugin\Service\WebhookCheckAuthPlugin"/>
     </type>
 </config>
