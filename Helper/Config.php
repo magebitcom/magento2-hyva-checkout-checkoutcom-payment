@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
  * @author    Magebit <info@magebit.com>
  * @license   MIT
  */
@@ -484,22 +484,15 @@ class Config extends AbstractHelper implements ArgumentInterface
      */
     public function getMbWayAdditionalSuccessStates(): array
     {
-        $rawPrimary = $this->scopeConfig->getValue(
-            'payment/checkoutcom_apm/mb_way_addtional_success_states',
-            ScopeInterface::SCOPE_STORE
-        );
-
-        $rawFallback = $this->scopeConfig->getValue(
+        $successStates = $this->scopeConfig->getValue(
             'payment/checkoutcom_apm/mb_way_additional_success_states',
             ScopeInterface::SCOPE_STORE
         );
 
-        $raw = $rawPrimary ?: $rawFallback;
-
-        if (!$raw) {
+        if (!$successStates) {
             return [];
         }
 
-        return array_values(array_filter(array_map('trim', explode(',', (string)$raw))));
+        return array_values(array_filter(array_map('trim', explode(',', (string)$successStates))));
     }
 }

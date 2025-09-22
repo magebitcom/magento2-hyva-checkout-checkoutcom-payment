@@ -17,6 +17,9 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 - [x] Card Payments (Multiple iframes)
     - [X] Vault
 - [x] Google Pay
+    - [x] Checkout Page
+    - [ ] Cart
+    - [ ] Minicart
 - [x] Apple Pay
     - [x] Checkout Page
     - [ ] Cart

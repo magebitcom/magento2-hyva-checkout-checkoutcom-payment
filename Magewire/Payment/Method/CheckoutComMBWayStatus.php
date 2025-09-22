@@ -26,15 +26,19 @@ class CheckoutComMBWayStatus extends Component
     public string $orderStatus = '';
     public string $orderIncrement = '';
     public bool $isPolling = true;
-    public array $processingStatuses = [
-        'payment_approved',
-        'payment_captured'
-    ];
-
+    public int $successCode = 10000;
     public array $failedStatuses = [
         'payment_declined',
         'payment_expired',
         'payment_authentication_failed'
+    ];
+
+    public array $failedCodes = [
+        20000,
+        20017,
+        20003,
+        20120,
+        20019
     ];
 
     /**
@@ -210,7 +214,6 @@ class CheckoutComMBWayStatus extends Component
     {
         $hasSuccessCode = false;
         $hasFailureCode = false;
-        $hasFailureEvent = false;
         $hasAdditionalSuccessEvent = false;
         $lastResponseSummary = 'Unknown';
 
@@ -222,23 +225,16 @@ class CheckoutComMBWayStatus extends Component
             $responseCode = $eventData['response_code'] ?? $eventData['data']['response_code'] ?? null;
             $responseSummary = $eventData['response_summary'] ?? $eventData['data']['response_summary'] ?? 'Unknown';
 
-            if ($responseSummary !== 'Unknown') {
-                $lastResponseSummary = $responseSummary;
-            }
+            $lastResponseSummary = $responseSummary;
 
             // Check for definitive success (response code 10000)
-            if ($responseCode === '10000' || $responseCode === 10000) {
+            if ((int)$responseCode === $this->successCode) {
                 $hasSuccessCode = true;
             }
 
-            // Check for definitive failure (response code 20000+)
-            if ($responseCode && (int)$responseCode >= 20000) {
+            // Check for definitive failure (response code 20000+ or in failed codes list)
+            if ((int)$responseCode >= 20000 || in_array((int)$responseCode, $this->failedCodes)) {
                 $hasFailureCode = true;
-            }
-
-            // Check for failure by event type
-            if (in_array($eventType, $this->failedStatuses, true)) {
-                $hasFailureEvent = true;
             }
 
             // Check for admin-configured additional success events
@@ -253,7 +249,7 @@ class CheckoutComMBWayStatus extends Component
             return;
         }
 
-        if ($hasFailureCode || $hasFailureEvent) {
+        if ($hasFailureCode) {
             $this->checkoutSession->restoreQuote();
             $this->messageManager->addErrorMessage(
                 __('Your payment was declined. Reason: %1', $lastResponseSummary)
