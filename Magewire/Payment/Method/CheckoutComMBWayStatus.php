@@ -9,12 +9,12 @@ declare(strict_types=1);
 
 namespace Magebit\CheckoutComPayment\Magewire\Payment\Method;
 
+use Magento\Framework\App\ResourceConnection;
 use Exception;
 use Magento\Checkout\Model\Session as CheckoutSession;
-use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Message\ManagerInterface;
-use Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Sales\Model\Order;
+use Magento\Framework\Serialize\Serializer\Json as JsonSerializer;
+use Magebit\CheckoutComPayment\Helper\Config;
 use Magewirephp\Magewire\Component;
 use Magewirephp\Magewire\Model\Concern\Redirect as RedirectTrait;
 use Psr\Log\LoggerInterface;
@@ -26,48 +26,55 @@ class CheckoutComMBWayStatus extends Component
     public string $orderStatus = '';
     public string $orderIncrement = '';
     public bool $isPolling = true;
+    public int $successCode = 10000;
+    public array $failedStatuses = [
+        'payment_declined',
+        'payment_expired',
+        'payment_authentication_failed'
+    ];
 
-    private array $processingStatuses = [
-        Order::STATE_PROCESSING,
-        'processing',
-        'complete'
+    public array $failedCodes = [
+        20000,
+        20017,
+        20003,
+        20120,
+        20019
     ];
 
     /**
      * @param CheckoutSession $checkoutSession
-     * @param OrderRepositoryInterface $orderRepository
-     * @param SearchCriteriaBuilder $searchCriteriaBuilder
+     * @param JsonSerializer $jsonSerializer
      * @param LoggerInterface $logger
      * @param ManagerInterface $messageManager
+     * @param Config $config
+     * @param ResourceConnection $resourceConnection
      */
     public function __construct(
         private readonly CheckoutSession $checkoutSession,
-        private readonly OrderRepositoryInterface $orderRepository,
-        private readonly SearchCriteriaBuilder $searchCriteriaBuilder,
+        private readonly JsonSerializer $jsonSerializer,
         private readonly LoggerInterface $logger,
         private readonly ManagerInterface $messageManager,
+        private readonly Config $config,
+        private readonly ResourceConnection $resourceConnection,
     ) {
     }
 
     /**
-     * Initialize component with order information
+     * Lifecycle hook called after hydration on subsequent requests
+     *
+     * @return void
      */
-    public function mount(): void
+    public function booted(): void
     {
-        $this->startPolling();
-    }
-
-    /**
-     * Start polling for order status
-     */
-    public function startPolling(): void
-    {
-        $this->isPolling = true;
-        $this->checkOrderStatus();
+        if ($this->isPolling && empty($this->orderIncrement)) {
+            $this->ensureOrderIncrement();
+        }
     }
 
     /**
      * Stop polling
+     *
+     * @return void
      */
     public function stopPolling(): void
     {
@@ -75,55 +82,194 @@ class CheckoutComMBWayStatus extends Component
     }
 
     /**
-     * Check the current order status
+     * Ensure order increment is set by retrieving it if needed
+     *
+     * @return void
+     */
+    private function ensureOrderIncrement(): void
+    {
+        if (empty($this->orderIncrement)) {
+            try {
+                $lastOrder = $this->checkoutSession->getLastRealOrder();
+                $this->orderIncrement = $lastOrder->getIncrementId() ?? '';
+            } catch (\Exception $e) {
+                $this->orderIncrement = '';
+            }
+        }
+    }
+
+    /**
+     * Check the current order status through webhook data
      *
      * @return void
      */
     public function checkOrderStatus(): void
     {
+        if (!$this->isPolling) {
+            return;
+        }
+
         try {
-            $orderId = $this->checkoutSession->getLastRealOrder()->getIncrementId();
-            if (!$orderId) {
+            $this->ensureOrderIncrement();
+
+            if (!$this->orderIncrement) {
                 $this->stopPolling();
                 return;
             }
 
-            $this->orderIncrement = $orderId;
+            $matchingWebhooks = $this->getWebhooksForOrder($this->orderIncrement);
 
-            $searchCriteria = $this->searchCriteriaBuilder
-                ->addFilter('increment_id', $orderId)
-                ->create();
-
-            $orderList = $this->orderRepository->getList($searchCriteria)->getItems();
-            $order = reset($orderList);
-
-            if (!$order) {
-                $this->stopPolling();
+            if (empty($matchingWebhooks)) {
                 return;
             }
 
-            $orderStatus = $order->getStatus();
+            $allEvents = [];
 
-            if ($orderStatus === 'canceled') {
-                $this->checkoutSession->restoreQuote();
+            foreach ($matchingWebhooks as $webhook) {
+                try {
+                    $eventData = $this->jsonSerializer->unserialize($webhook['event_data']);
+                    $eventType = $webhook['event_type'];
 
-                $payment = $order->getPayment();
-                $additionalInfo = $payment->getAdditionalInformation();
-                $responseSummary = $additionalInfo['response_summary'] ?? 'Rejected';
+                    $allEvents[] = [
+                        'id' => $webhook['id'],
+                        'type' => $eventType,
+                        'data' => $eventData
+                    ];
+                } catch (Exception $e) {
+                    $this->logger->error('Failed to parse webhook event data', [
+                        'webhook_id' => $webhook['id'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
 
-                $this->messageManager->addErrorMessage(
-                    __('Your payment was declined. Reason: %1', $responseSummary)
-                );
-
-                $this->stopPolling();
-                $this->redirect('hyva_checkout/index');
-
-            } elseif (in_array($orderStatus, $this->processingStatuses)) {
-                $this->stopPolling();
-                $this->redirect('checkout/onepage/success');
+            // Determine the most definitive status from all events
+            if (!empty($allEvents)) {
+                $this->handleMultipleWebhookEvents($allEvents);
             }
         } catch (Exception $e) {
+            $this->logger->error('Error checking order status via webhooks', [
+                'order_increment' => $this->orderIncrement ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             $this->stopPolling();
         }
+    }
+
+    /**
+     * Get all webhooks for specific order using direct database query
+     *
+     * @param string $orderIncrement
+     * @return array
+     */
+    private function getWebhooksForOrder(string $orderIncrement): array
+    {
+        try {
+            $connection = $this->resourceConnection->getConnection();
+            $tableName = $this->resourceConnection->getTableName('checkoutcom_webhooks');
+
+            // Query to find all webhooks where event_data JSON contains the reference
+            $select = $connection->select()
+                ->from($tableName, ['id', 'event_type', 'event_data', 'received_at', 'order_id'])
+                ->where('event_data LIKE ?', '%"reference":"' . $orderIncrement . '"%')
+                ->order('id ASC');
+
+            $webhooks = $connection->fetchAll($select);
+
+            $verifiedWebhooks = [];
+            foreach ($webhooks as $webhook) {
+                try {
+                    $eventData = $this->jsonSerializer->unserialize($webhook['event_data']);
+                    $webhookReference = $eventData['data']['reference'] ?? null;
+
+                    if ($webhookReference === $orderIncrement) {
+                        $verifiedWebhooks[] = $webhook;
+                    }
+                } catch (Exception $e) {
+                    $this->logger->error('Failed to parse webhook during verification', [
+                        'webhook_id' => $webhook['id'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            return $verifiedWebhooks;
+        } catch (Exception $e) {
+            $this->logger->error('Failed to execute direct webhook query', [
+                'order_increment' => $orderIncrement,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Handle multiple webhook events and determine the most definitive status
+     *
+     * @param array $allEvents
+     * @return void
+     */
+    private function handleMultipleWebhookEvents(array $allEvents): void
+    {
+        $hasSuccessCode = false;
+        $hasFailureCode = false;
+        $hasAdditionalSuccessEvent = false;
+        $lastResponseSummary = 'Unknown';
+
+        // Analyze all events to find the most definitive status
+        foreach ($allEvents as $event) {
+            $eventType = $event['type'];
+            $eventData = $event['data'];
+
+            $responseCode = $eventData['response_code'] ?? $eventData['data']['response_code'] ?? null;
+            $responseSummary = $eventData['response_summary'] ?? $eventData['data']['response_summary'] ?? 'Unknown';
+
+            $lastResponseSummary = $responseSummary;
+
+            // Check for definitive success (response code 10000)
+            if ((int)$responseCode === $this->successCode) {
+                $hasSuccessCode = true;
+            }
+
+            // Check for definitive failure (response code 20000+ or in failed codes list)
+            if ((int)$responseCode >= 20000 || in_array((int)$responseCode, $this->failedCodes)) {
+                $hasFailureCode = true;
+            }
+
+            // Check for admin-configured additional success events
+            if ($this->isEventInAdditionalSuccessStates($eventType)) {
+                $hasAdditionalSuccessEvent = true;
+            }
+        }
+
+        if ($hasSuccessCode || $hasAdditionalSuccessEvent) {
+            $this->stopPolling();
+            $this->redirect('checkout/onepage/success');
+            return;
+        }
+
+        if ($hasFailureCode) {
+            $this->checkoutSession->restoreQuote();
+            $this->messageManager->addErrorMessage(
+                __('Your payment was declined. Reason: %1', $lastResponseSummary)
+            );
+            $this->stopPolling();
+            $this->redirect('hyva_checkout/index');
+            return;
+        }
+        // If we reach here, all events are pending or unknown - continue polling
+    }
+
+    /**
+     * Check if the event type is configured as an additional success state
+     *
+     * @param string $eventType
+     * @return bool
+     */
+    private function isEventInAdditionalSuccessStates(string $eventType): bool
+    {
+        $states = $this->config->getMbWayAdditionalSuccessStates();
+        return in_array($eventType, $states, true);
     }
 }

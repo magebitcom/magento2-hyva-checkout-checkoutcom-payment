@@ -7,5 +7,10 @@
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <preference for="Magebit\CheckoutComPayment\Api\WebhookInterface" type="Magebit\CheckoutComPayment\Model\Webhook\WebhookApi"/>
+    <type name="CheckoutCom\Magento2\Model\Service\WebhookHandlerService">
+        <plugin name="magebit_checkoutcom_webhook_handler_normalize_action_id"
+                type="Magebit\CheckoutComPayment\Plugin\Service\WebhookHandlerServicePlugin"/>
+        <plugin name="magebit_checkoutcom_webhook_check_auth"
+                type="Magebit\CheckoutComPayment\Plugin\Service\WebhookCheckAuthPlugin"/>
+    </type>
 </config>

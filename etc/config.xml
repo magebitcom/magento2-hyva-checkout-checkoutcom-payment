@@ -12,6 +12,8 @@
         <payment>
             <checkoutcom_apm>
                 <mb_pay_phone_validation>0</mb_pay_phone_validation>
+                <mb_way_status_text>Please complete the payment in your MB WAY app to avoid order cancellation.</mb_way_status_text>
+                <mb_way_polling_interval>5000</mb_way_polling_interval>
             </checkoutcom_apm>
             <checkoutcom_google_pay>
                 <google_pay_button_radius>8</google_pay_button_radius>

@@ -19,5 +19,6 @@
         </referenceContainer>
         <referenceContainer name="header.container" remove="true"/>
         <referenceContainer name="footer-container" remove="true"/>
+        <referenceBlock name="customer.section.config" remove="true"/>
     </body>
 </page>
