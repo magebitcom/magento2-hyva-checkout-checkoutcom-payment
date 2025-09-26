@@ -1,6 +1,7 @@
 <?php
 /**
  * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
  * @license   MIT
  */
 

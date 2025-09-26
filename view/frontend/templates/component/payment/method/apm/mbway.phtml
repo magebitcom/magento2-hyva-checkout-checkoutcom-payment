@@ -14,9 +14,7 @@ use Magento\Framework\View\Element\Template;
 /** @var Escaper $escaper */
 ?>
 
-<div x-cloak
-     x-show="$wire.selectedMethod === 'mbway'"
->
+<div x-cloak x-show="isMbWaySelected">
     <div class="grid grid-cols-12 gap-6">
         <div class="col-span-12 field-wrapper field-type-text field field-reserved md:col-span-6">
             <div class="w-full font-medium text-gray-700 relative required">
