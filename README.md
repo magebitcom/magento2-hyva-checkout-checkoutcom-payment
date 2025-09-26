@@ -25,7 +25,8 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
     - [ ] Cart
     - [ ] Minicart
 - [x] Alternative payment methods
-    - [X] MB PAY
+    - [X] MB WAY
+- [x] Klarna (NAS)
 
 ### Functionality that is currently not supported:
 * Adding a new Stored Card from My Account -> Stored Payment Methods
@@ -35,7 +36,6 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
 * Card Payments -> Display Card Icons
 
 ### Payment methods the currently are not supported:
-* Klarna (NAS)
 * Paypal Payments (NAS)
 * MOTO Payments
 

@@ -28,5 +28,3 @@ class AdditionalSuccessStates implements OptionSourceInterface
         ];
     }
 }
-
-

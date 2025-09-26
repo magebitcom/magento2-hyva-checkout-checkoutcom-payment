@@ -16,23 +16,22 @@ use Magento\Framework\View\Element\Template;
 /** @var Escaper $escaper */
 ?>
 
-<div>
+<div x-data="checkoutComApm">
     <form class="payment-method-form">
-        <div x-data="checkoutComApm">
             <div class="mb-6">
                 <div class="grid grid-cols-1 gap-4">
                     <?php foreach ($magewire->getAvailableApmMethods() as $methodCode => $methodName): ?>
-                        <div class="payment-method-option"
-                             @click="$wire.selectMethod('<?= $escaper->escapeHtmlAttr($methodCode) ?>')"
-                        >
+                        <div class="payment-method-option">
                             <label for="apm-<?= $escaper->escapeHtmlAttr($methodCode) ?>"
                                    class="flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors">
                                 <input type="radio"
                                        id="apm-<?= $escaper->escapeHtmlAttr($methodCode) ?>"
                                        name="apm-method"
                                        class="mr-4"
+                                       value="<?= $escaper->escapeHtmlAttr($methodCode) ?>"
                                        wire:model="selectedMethod"
-                                       value="<?= $escaper->escapeHtmlAttr($methodCode) ?>">
+                                       @change="onMethodChange"
+                                >
                                 <span class="flex-grow">
                                     <?= $escaper->escapeHtml($methodName) ?>
                                 </span>
@@ -40,20 +39,10 @@ use Magento\Framework\View\Element\Template;
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <!-- Additional templates for other APM methods would go here -->
+
+                <?= /** noEscape */ $block->getChildHtml('checkoutcom_apm_mbway') ?>
+
             </div>
-
-            <!-- Additional templates for other APM methods would go here -->
-
-            <?= /** noEscape */ $block->getChildHtml('checkoutcom_apm_mbway') ?>
-
-        </div>
     </form>
-    <script>
-        function checkoutComApm() {
-            return {
-                component: '<?= $escaper->escapeJs('checkout.payment.method.checkoutcom.apm') ?>',
-                selectedMethod: '<?= $escaper->escapeJs($magewire->selectedMethod) ?>',
-            };
-        }
-    </script>
 </div>

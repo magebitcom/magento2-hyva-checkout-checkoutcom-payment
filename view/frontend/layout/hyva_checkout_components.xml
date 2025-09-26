@@ -65,6 +65,10 @@
                        as="checkoutcom_apm_mbway"
                        template="Magebit_CheckoutComPayment::component/payment/method/apm/mbway.phtml" />
             </block>
+            <block name="checkout.payment.method.checkoutcom.klarna"
+                   as="checkoutcom_klarna"
+                   template="Magebit_CheckoutComPayment::component/payment/method/klarna.phtml">
+            </block>
         </referenceBlock>
     </body>
 </page>

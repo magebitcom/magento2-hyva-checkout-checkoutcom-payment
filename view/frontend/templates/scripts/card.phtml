@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
  * @author    Magebit <info@magebit.com>
  * @license   MIT
  */
@@ -120,8 +120,6 @@ $publicKey = $config->getPublicKey();
                         let valid = Frames.isCardValid();
 
                         if (valid) {
-                            window.dispatchEvent(new CustomEvent('magewire:loader:start:forced'));
-
                             Frames.cardholder = {
                                 name: await this.getCardHolderName()
                             };
@@ -139,7 +137,6 @@ $publicKey = $config->getPublicKey();
                         await Magewire.find(this.component).setPaymentToken(event.token, event.bin, event.scheme);
                         this.validCard = true;
 
-                        window.dispatchEvent(new CustomEvent('magewire:loader:done:forced'));
                         Frames.enableSubmitForm();
                     }.bind(this)
                 );
@@ -183,6 +180,10 @@ $publicKey = $config->getPublicKey();
 
                 window.dispatchEvent(new CustomEvent('magewire:loader:done'));
             },
+            onSaveCardChange() {
+                const isChecked = this.$refs.saveCardInput && this.$refs.saveCardInput.checked;
+                this.saveCard(!!isChecked);
+            },
             clearErrorMessage (el) {
                 this.$refs[el].innerHTML = '';
                 this.errorIcons[el] = {'hidden': true};
@@ -197,6 +198,21 @@ $publicKey = $config->getPublicKey();
                 Frames.removeAllEventHandlers(Frames.Events.FRAME_VALIDATION_CHANGED);
                 Frames.removeAllEventHandlers(Frames.Events.PAYMENT_METHOD_CHANGED);
             },
+
+            getErrorIconsNumber() {
+                return this.errorIcons['card-number'];
+            },
+
+            getErrorIconsExpiry() {
+                return this.errorIcons['expiry-date'];
+            },
+
+            getErrorIconsCvv() {
+                return this.errorIcons['cvv'];
+            }
         };
     }
+
+    window.addEventListener('alpine:init', () => Alpine.data('checkoutComCard', checkoutComCard), {once: true});
 </script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>

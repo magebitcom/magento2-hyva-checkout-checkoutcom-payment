@@ -1,0 +1,72 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magento\Framework\Escaper;
+
+/** @var Escaper $escaper */
+?>
+    <script>
+        function checkoutComApm() {
+            return {
+                component: '<?= $escaper->escapeJs('checkout.payment.method.checkoutcom.apm') ?>',
+                selectedMethod: '',
+                isProcessing: false,
+
+                init() {
+                    this.selectedMethod = this.$wire.get('selectedMethod') || '';
+
+                    this.$watch('$wire.selectedMethod', (value, oldValue) => {
+                        if (value !== oldValue) {
+                            this.selectedMethod = value;
+                        }
+                    });
+                },
+
+                async selectMethod(methodCode) {
+                    // Skip if already processing or method hasn't changed
+                    if (this.isProcessing || this.selectedMethod === methodCode) {
+                        return;
+                    }
+
+                    this.isProcessing = true;
+
+                    const previousMethod = this.selectedMethod;
+                    this.selectedMethod = methodCode;
+
+                    try {
+                        return await this.$wire.selectMethod(methodCode);
+                    } catch (error) {
+                        this.selectedMethod = previousMethod;
+                        throw error;
+                    } finally {
+                        this.isProcessing = false;
+                    }
+                },
+
+                async onMethodChange() {
+                    const methodCode = this.$event.target.value;
+
+                    try {
+                        await this.selectMethod(methodCode);
+                    } catch (error) {
+                        console.error('There was an error selecting payment method');
+                    }
+                },
+
+                isMbWaySelected() {
+                    return this.selectedMethod === 'mbway';
+                }
+            };
+        }
+
+        window.addEventListener('alpine:init', () => {
+            Alpine.data('checkoutComApm', checkoutComApm);
+        }, {once: true});
+    </script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>

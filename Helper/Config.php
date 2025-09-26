@@ -495,4 +495,45 @@ class Config extends AbstractHelper implements ArgumentInterface
 
         return array_values(array_filter(array_map('trim', explode(',', (string)$successStates))));
     }
+
+    /**
+     * Returns bool whether Checkout Com global settings set to be a testing environment
+     *
+     * @return bool
+     */
+    public function isTestEnvironment(): bool
+    {
+        $environment = $this->scopeConfig->getValue(
+            'settings/checkoutcom_configuration/environment',
+            ScopeInterface::SCOPE_STORE
+        );
+
+        return $environment === "1";
+    }
+
+    /**
+     * Returns processing channel ID necessary in some API requests
+     *
+     * @return string
+     */
+    public function getProcessingChannelId(): string
+    {
+        return $this->scopeConfig->getValue(
+            'settings/checkoutcom_configuration/channel_id',
+            ScopeInterface::SCOPE_STORE
+        );
+    }
+
+    /**
+     * Get the private key for payment methods that require it
+     *
+     * @return string|null
+     */
+    public function getSecretKey(): ?string
+    {
+        return $this->scopeConfig->getValue(
+            'settings/checkoutcom_configuration/secret_key',
+            ScopeInterface::SCOPE_STORE,
+        );
+    }
 }

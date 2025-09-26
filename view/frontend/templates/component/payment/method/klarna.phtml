@@ -1,0 +1,51 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Hyva\Theme\Model\ViewModelRegistry;
+use Hyva\Theme\ViewModel\SvgIcons;
+use Magebit\CheckoutComPayment\Helper\Config;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+
+$config = $viewModels->require(Config::class);
+$icons = $viewModels->require(SvgIcons::class);
+?>
+<form wire:ignore>
+    <div x-data="checkoutComKlarna">
+        <div class="w-full">
+            <p><?= $escaper->escapeHtml(__('Terms and conditions apply.')) ?>
+                <a class="link" href="<?= /* @noEscape */$block->getBaseUrl() ?>introducing-klarna" target="_blank"
+                aria-label="<?= $escaper->escapeHtmlAttr(__('Klarna terms and conditions (opens in new tab)'))?>">
+                    <?= $escaper->escapeHtml(__('Read more')) ?>
+                </a>
+            </p>
+        </div>
+
+        <div class="w-full" id="klarna-payments-container"></div>
+
+        <div class="error-messages flex flex-col text-xs mt-4" x-cloak x-show="errorText">
+            <div class="message error mb-3">
+                <div class="container">
+                    <div class="wrapper">
+                        <div>
+                            <?= /* @noEscape */ $icons->exclamationCircleHtml('w-5 h-5') ?>
+                        </div>
+                        <div>
+                            <span x-text="errorText"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

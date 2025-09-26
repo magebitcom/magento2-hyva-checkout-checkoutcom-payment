@@ -1,0 +1,366 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magebit\CheckoutComPayment\Controller\Checkout\GetShippingBilling;
+use Magebit\CheckoutComPayment\Helper\Config;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+
+$config = $viewModels->require(Config::class);
+$publicKey = $config->getPublicKey();
+$isTestEnvironment = $config->isTestEnvironment();
+?>
+<script>
+    function checkoutComKlarna() {
+        // Status constants
+        const STATUS_FAILED = 'Failed';
+        const STATUS_APPROVED = 'Approved';
+        const STATUS_WAITING = 'Waiting';
+
+        return {
+            component: '<?= $escaper->escapeJs('checkout.payment.method.checkoutcom.klarna') ?>',
+            clientContext: '',
+            klarnaAvailable: false,
+            verifyLink: '',
+            isContextAccepted: false,
+            shippingAddress: null,
+            billingAddress: null,
+            errorText: '',
+            init() {
+                Alpine.store('klarna', {
+                    methodId: 'checkoutcom_klarna',
+                    contextId: '',
+                    isAuthorized: false,
+                });
+
+                const promises = [];
+                window.dispatchEvent(new CustomEvent('magewire:loader:start'));
+                if (this.clientContext === '') {
+                    promises.push(this.getKlarnaClientContext());
+                }
+
+                if (!window.Klarna) {
+                    const klarnaPromise = new Promise((resolve) => {
+                        loadThirdPartyScriptOnInteraction('klarna', () => resolve());
+                    });
+
+                    promises.push(klarnaPromise);
+                }
+
+                Promise.all(promises).then(() => {
+                    this.initKlarna();
+                });
+                window.dispatchEvent(new CustomEvent('magewire:loader:done'));
+
+                this.handleChangeToKlarnaPM();
+            },
+            initKlarna() {
+                try {
+                    Klarna.Payments.init({
+                        client_token: this.clientContext
+                    });
+                    Klarna.Payments.load({
+                            container: '#klarna-payments-container'
+                        }, {},
+                        <?= /* @noEscape */ $config->isDebugModeEnabled() ? 'function (res) {console.debug(res)}' : '() => {}' ?>
+                    );
+                } catch (e) {
+                    console.error(e);
+                    this.setErrorText();
+                }
+            },
+            async authorizeKlarnaSession() {
+                if (!window.Klarna) return;
+
+                await this.getShippingBilling()
+                if (Alpine.store('klarna').isAuthorized) {
+                    await this.reauthorizeKlarnaSession();
+                    return;
+                }
+
+                const addresses = {
+                    shipping_address: this.shippingAddress,
+                    billing_address: this.billingAddress
+                };
+
+                const self = this;
+                return new Promise(async (resolve) => {
+                    await Klarna.Payments.authorize({},
+                        addresses,
+                        function(res) {
+                            resolve();
+                            self.authorizationCallback(res)
+                        }
+                    )
+                });
+            },
+            async authorizationCallback(res) {
+                <?= /* @noEscape */ $config->isDebugModeEnabled() ? 'console.debug("Authorize outcome: ", res)' : '' ?>;
+                if (res.approved) {
+                    Alpine.store('klarna').isAuthorized = true;
+                    this.clearErrorMessage();
+
+                    // Wait for CheckoutCom to receive Klarna's webhook before placing order
+                    const contextApproved = await this.waitForContextApproval();
+                    if (contextApproved === STATUS_APPROVED) {
+                        await this.placeOrder();
+                    } else {
+                        this.setErrorText('<?= $escaper->escapeJs(__('Payment approval timeout. Please try again.')) ?>');
+                    }
+                    this.resetPlaceOrderButton();
+                } else {
+                    if (res.error) {
+                        if (res.error.invalid_fields) {
+                            const invalidFields = res.error.invalid_fields;
+                            let errorText = '<?= $escaper->escapeJs(__('Invalid fields: ')) ?>' + invalidFields.join(', ');
+                            this.setErrorText(errorText);
+                        } else {
+                            this.setErrorText();
+                        }
+                    } else {
+                        this.setErrorText()
+                    }
+                }
+            },
+            setPlaceOrderButtonLoading() {
+                const placeOrderButton = document.querySelector('.btn-place-order');
+                if (placeOrderButton) {
+                    placeOrderButton.classList.add('loading');
+                    placeOrderButton.setAttribute('disabled', 'disabled');
+                }
+            },
+            resetPlaceOrderButton() {
+                const placeOrderButton = document.querySelector('.btn-place-order');
+                if (placeOrderButton) {
+                    placeOrderButton.classList.remove('loading');
+                    placeOrderButton.removeAttribute('disabled');
+                }
+            },
+            async placeOrder() {
+                if (Alpine.store('klarna').contextId) {
+                    const data = {
+                        methodId: Alpine.store('klarna').methodId,
+                        contextPaymentId: Alpine.store('klarna').contextId,
+                    };
+
+                    try {
+                        const formKey = hyva.getFormKey();
+
+                        // Build query string from data
+                        const queryParams = new URLSearchParams({
+                            ...data
+                        });
+
+                        const response = await fetch(BASE_URL + 'checkout_com/payment/placeorder?' + queryParams.toString(), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                form_key: formKey
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (!result.success) {
+                            let errorMessage = result.message || '';
+                            <?= /* @noEscape */ $config->isDebugModeEnabled() ? 'if (result.debugMessage) { console.debug("Payment Error Debug:", result.debugMessage); }' : '' ?>
+
+                            if (result.responseCode) {
+                                errorMessage += ' (Code: ' + result.responseCode + ')';
+                            }
+
+                            this.setErrorText(errorMessage);
+                        } else if (result.success && result.url) {
+                            <?php /* Handle 3DS redirection */ ?>
+                            window.location.href = result.url;
+                        } else {
+                            <?php /*  Normal success - redirect to success page */ ?>
+                            window.location.href = BASE_URL + 'checkout/onepage/success/';
+                        }
+                    } catch (error) {
+                        console.error('Error placing order: ', error);
+                        this.setErrorText();
+                    }
+                } else {
+                    this.setErrorText('<?= $escaper->escapeJs(__('Something went wrong, please refresh the page and try again.')) ?>');
+                }
+            },
+            async reauthorizeKlarnaSession() {
+                if (!window.Klarna) return;
+
+                await this.getShippingBilling();
+                const addresses = {
+                    shipping_address: this.shippingAddress,
+                    billing_address: this.billingAddress
+                };
+
+                const self = this;
+                await Klarna.Payments.reauthorize({},
+                    addresses,
+                    function(res) {
+                        self.authorizationCallback(res)
+                    }
+                )
+            },
+            async getKlarnaClientContext() {
+                const formKey = hyva.getFormKey();
+                try {
+                    const response = await fetch(BASE_URL + 'checkout_com/klarna/context', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            'form_key': formKey,
+                            'country': ''
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.$store.klarna.contextId = data.content.id;
+                        this.clientContext = data.content.partner_metadata.client_token;
+                        this.verifyLink = data.content._links.self.href;
+                    } else {
+                        console.error('Failed to create payment context: ', data.content.error);
+                        this.setErrorText();
+                    }
+                } catch (error) {
+                    console.error('Error creating payment context: ', error);
+                    this.setErrorText();
+                    return Promise.reject();
+                }
+
+                return this.clientContext;
+            },
+            async getShippingBilling() {
+                const formKey = hyva.getFormKey();
+                try {
+                    const response = await fetch(BASE_URL + '<?= /* @noEscape */ GetShippingBilling::ROUTE ?>', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            'form_key': formKey
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.shippingAddress = data.shippingAddress;
+                        this.billingAddress = data.billingAddress;
+                    } else {
+                        console.error('Failed to get checkout session addresses: ', data.error);
+                        this.setErrorText();
+                    }
+                } catch (error) {
+                    console.error('Failed to get checkout session addresses: ', error);
+                    this.setErrorText();
+                }
+            },
+            async waitForContextApproval() {
+                let attempts = 0;
+                const delays = [100, 200, 500, 1000, 2000, 3000, 5000, 8000, 12000, 18000];
+
+                while (attempts < delays.length) {
+                    const status = await this.checkContextStatus();
+
+                    <?php /* We need to set the button loading only on the first attempt.
+                    We are forced to do it here because the Klarna popup will only close after we check context status. */ ?>
+                    if (attempts === 0) {
+                        this.setPlaceOrderButtonLoading();
+                    }
+
+                    if (status === STATUS_FAILED || status === STATUS_APPROVED) {
+                        return status;
+                    }
+
+                    const intervalMs = delays[attempts];
+                    await new Promise(resolve => setTimeout(resolve, intervalMs));
+                    attempts++;
+                }
+
+                return STATUS_FAILED;
+            },
+            async checkContextStatus() {
+                const contextId = Alpine.store('klarna').contextId;
+                if (!contextId) {
+                    return STATUS_FAILED;
+                }
+
+                const formKey = hyva.getFormKey();
+                try {
+                    const response = await fetch(BASE_URL + 'magebithyva_checkoutcom/klarna/status', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            'form_key': formKey,
+                            'context_id': contextId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok || data.errorMessage) {
+                        return STATUS_FAILED;
+                    }
+
+                    return data.status === STATUS_APPROVED ? STATUS_APPROVED : STATUS_WAITING;
+                } catch (error) {
+                    return STATUS_FAILED;
+                }
+            },
+            handleChangeToKlarnaPM() {
+                const self = this;
+                hyvaCheckout.payment.activate(
+                    'checkoutcom_klarna', {
+                        placeOrderViaJs() {
+                            return true;
+                        },
+                        placeOrder: async () => {
+                            await self.authorizeKlarnaSession()
+                        },
+                        setErrorText: (errorText) => {
+                            self.setErrorText(errorText)
+                        }
+                    },
+                    document.getElementById('payment-method-option-checkoutcom_klarna')
+                )
+            },
+
+            clearErrorMessage() {
+                this.errorText = '';
+            },
+            setErrorText(errorText = '') {
+                this.errorText = errorText === '' ? '<?= $escaper->escapeJs(__('Something went wrong, please try a different payment method.')) ?>' : errorText;
+            }
+        }
+    }
+
+    window.addEventListener('alpine:init', () => Alpine.data('checkoutComKlarna', checkoutComKlarna), {
+        once: true
+    });
+</script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript() ?>
