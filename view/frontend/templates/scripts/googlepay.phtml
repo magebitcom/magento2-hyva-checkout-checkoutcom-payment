@@ -138,12 +138,6 @@ $orderData = $viewModels->require(Data::class);
                     totalPriceStatus: 'FINAL',
                     totalPrice: totalAmount.toFixed(2),
                     currencyCode: googlePayConfig.currency
-                },
-                emailRequired: true,
-                shippingAddressRequired: true,
-                shippingAddressParameters: {
-                    allowedCountryCodes: ['US', 'CA', 'GB', 'IE', 'FR', 'DE', 'IT', 'ES', 'AU', 'NZ'],
-                    phoneNumberRequired: true
                 }
             });
         }
