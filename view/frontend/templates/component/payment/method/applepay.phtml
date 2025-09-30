@@ -16,8 +16,12 @@ use Magento\Framework\View\Element\Template;
 /** @var Escaper $escaper */
 ?>
 
-<div x-data="initCheckoutComApplePay('<?= $escaper->escapeJs($block->getNameInLayout()) ?>')"
-     x-init="setupApplePay()">
-
+<div
+    x-data="checkoutComApplePay"
+    x-init="init"
+    data-component-name="<?= $escaper->escapeHtmlAttr($block->getNameInLayout()) ?>"
+    data-payment-method="applepay"
+>
     <?= $escaper->escapeHtml(__('Please use Apple Pay button to complete the order.')) ?>
+
 </div>

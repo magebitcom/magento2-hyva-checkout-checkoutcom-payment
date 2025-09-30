@@ -222,6 +222,10 @@ $orderData = $viewModels->require(Data::class);
             isGooglePayButtonRendered: false,
             isApproved: false,
 
+            init() {
+                this.setupGooglePay();
+            },
+
             async setupGooglePay() {
                 window.dispatchEvent(new CustomEvent('magewire:loader:start'));
 
@@ -256,4 +260,13 @@ $orderData = $viewModels->require(Data::class);
             }
         };
     }
+    function checkoutComGooglePay() {
+        const componentName = document.querySelector('[data-component-name]')?.dataset?.componentName || 'checkout.payment.method.checkoutcom.googlepay';
+        return initCheckoutComGooglePay(componentName);
+    }
+
+    window.addEventListener('alpine:init', () => {
+        Alpine.data('checkoutComGooglePay', checkoutComGooglePay);
+    }, { once: true });
 </script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>

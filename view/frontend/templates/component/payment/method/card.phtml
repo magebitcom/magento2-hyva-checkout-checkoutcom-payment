@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (c) 2024 Magebit, Ltd. (https://magebit.com/)
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
  * @author    Magebit <info@magebit.com>
  * @license   MIT
  */
@@ -17,10 +17,10 @@ use Magento\Framework\Escaper;
 $config = $viewModels->require(Config::class);
 
 ?>
-<form x-data="initMagewireForm($el, $wire)"
-      x-init="initialize()"
+<form x-data="initMagewireForm"
+      x-init="initialize"
       >
-    <div x-data="checkoutComCard()">
+    <div x-data="checkoutComCard">
         <?php if ($config->getFormLayout() === 'single'): ?>
             <div class="card-frame h-10 border" wire:ignore>
                 <!-- Form will be added here -->
@@ -31,12 +31,12 @@ $config = $viewModels->require(Config::class);
             <label for="card-number">
                 <?= $escaper->escapeHtml($config->getCardNumberLabel()) ?>
             </label>
-            <div class="card-number mb-4 relative">
+            <div class="card-number mb-4 relative bg-white">
                 <div class="absolute top-1/2 -translate-y-1/2 left-2 w-6 flex justify-center">
                     <img :src="paymentMethodIcon" src="<?= $escaper->escapeHtmlAttr($config->getImagesPath() . '/frames/multi/card.svg') ?>" alt="<?= $escaper->escapeHtmlAttr(__('PAN')) ?>" />
                 </div>
                 <div class="card-number-frame h-10 border pl-10 pr-8" wire:ignore></div>
-                <div class="absolute top-1/2 -translate-y-1/2 right-2 hidden" :class="errorIcons['card-number']">
+                <div class="absolute top-1/2 -translate-y-1/2 right-2 hidden" :class="getErrorIconsNumber">
                     <img src="<?= $escaper->escapeHtmlAttr($config->getImagesPath() . '/frames/multi/error.svg') ?>" />
                 </div>
             </div>
@@ -48,12 +48,12 @@ $config = $viewModels->require(Config::class);
                     <label for="expiry-date">
                         <?= $escaper->escapeHtml($config->getExpiryLabel()) ?>
                     </label>
-                    <div class="relative">
+                    <div class="relative bg-white">
                         <div class="absolute top-1/2 -translate-y-1/2 left-2 w-6 flex justify-center">
                             <img src="<?= $escaper->escapeHtmlAttr($config->getImagesPath() . '/frames/multi/exp-date.svg') ?>" alt="<?= $escaper->escapeHtmlAttr(__('Expiry Date')) ?>" />
                         </div>
                         <div class="expiry-date-frame h-10 border pl-10 pr-8" wire:ignore></div>
-                        <div class="absolute top-1/2 -translate-y-1/2 right-2 hidden" :class="errorIcons['expiry-date']">
+                        <div class="absolute top-1/2 -translate-y-1/2 right-2 hidden" :class="getErrorIconsExpiry">
                             <img src="<?= $escaper->escapeHtmlAttr($config->getImagesPath() . '/frames/multi/error.svg') ?>" />
                         </div>
                     </div>
@@ -64,12 +64,12 @@ $config = $viewModels->require(Config::class);
                     <label for="cvv">
                         <?= $escaper->escapeHtml($config->getCvvLabel()) ?>
                     </label>
-                    <div class="relative">
+                    <div class="relative bg-white">
                         <div class="absolute top-1/2 -translate-y-1/2 left-2 w-6 flex justify-center">
                             <img src="<?= $escaper->escapeHtmlAttr($config->getImagesPath() . '/frames/multi/cvv.svg') ?>" alt="<?= $escaper->escapeHtmlAttr(__('CVV')) ?>" />
                         </div>
                         <div class="cvv-frame h-10 border pl-10 pr-8" wire:ignore></div>
-                        <div class="absolute top-1/2 -translate-y-1/2 right-2 hidden" :class="errorIcons['cvv']">
+                        <div class="absolute top-1/2 -translate-y-1/2 right-2 hidden" :class="getErrorIconsCvv">
                             <img src="<?= $escaper->escapeHtmlAttr($config->getImagesPath() . '/frames/multi/error.svg') ?>" />
                         </div>
                     </div>
@@ -99,13 +99,14 @@ $config = $viewModels->require(Config::class);
                     >
                 </div>
                 <?php if ($config->isSaveCardEnabled() && $config->isVaultEnabled() && $config->isCustomerLoggedIn()): ?>
-                    <label class="flex cursor-pointer">
+                    <label class="flex items-center cursor-pointer">
                         <div class="field">
                             <input type="checkbox"
                                    name="saveCard"
                                    wire:model="saveCard"
-                                   class="mr-1 cursor-pointer"
-                                   @change="saveCard($event.target.checked)"
+                                   class="mr-2 cursor-pointer mb-1"
+                                   x-ref="saveCardInput"
+                                   @change="onSaveCardChange"
                             >
                         </div>
                         <?= $escaper->escapeHtml(__('Save this card for later use.')) ?>

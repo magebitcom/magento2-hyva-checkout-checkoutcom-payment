@@ -183,6 +183,10 @@ $applePay = $viewModels->require(ApplePay::class);
             isApplePayAvailable: false,
             isApplePayButtonRendered: false,
 
+            init() {
+                this.setupApplePay();
+            },
+
             async setupApplePay() {
                 window.dispatchEvent(new CustomEvent('magewire:loader:start'));
 
@@ -215,4 +219,14 @@ $applePay = $viewModels->require(ApplePay::class);
             }
         };
     }
+
+    function checkoutComApplePay() {
+        const componentName = document.querySelector('[data-component-name]')?.dataset?.componentName || 'checkout.payment.method.checkoutcom.applepay';
+        return initCheckoutComApplePay(componentName);
+    }
+
+    window.addEventListener('alpine:init', () => {
+        Alpine.data('checkoutComApplePay', checkoutComApplePay);
+    }, { once: true });
 </script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>

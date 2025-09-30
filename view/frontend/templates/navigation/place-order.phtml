@@ -23,28 +23,30 @@ $checkout  = $navigator->getActiveCheckout();
 $next      = $checkout->getStepAfter($navigator->getActiveStep())
 ?>
 <?php if ($next === null): ?>
-    <div x-data="checkoutButtons()" x-init="initButtons()">
-        <button type="button"
-                class="btn btn-primary bg-green-700 hover:bg-green-600 btn-place-order"
-                x-spread="buttonPlaceOrder()"
-                x-bind="buttonPlaceOrder()"
-                x-show="showPlaceOrderButton"
-        >
-            <?= $escaper->escapeHtml(__('Place Order')) ?>
-        </button>
-        <div class="wallet-buttons space-y-2">
-            <div id="checkoutcom-applepay-button-container" class="h-10" x-show="showApplePayButton">
-                <div id="ckoApplePayButton-inNavigationContainer">
-                    <!-- Apple Pay button will be rendered here -->
+    <nav x-data="initCheckoutNavigation">
+        <div x-data="checkoutButtons">
+            <button type="button"
+                    class="btn btn-primary w-full max-w-full btn-place-order"
+                    x-spread="buttonPlaceOrder"
+                    x-bind="buttonPlaceOrder"
+                    x-show="showPlaceOrderButton"
+            >
+                <span><?= $escaper->escapeHtml(__('Place Order')) ?></span>
+            </button>
+            <div class="space-y-2">
+                <div id="checkoutcom-applepay-button-container" class="h-10" x-show="showApplePayButton">
+                    <div id="ckoApplePayButton-inNavigationContainer">
+                        <!-- Apple Pay button will be rendered here -->
+                    </div>
                 </div>
-            </div>
-            <div id="checkoutcom-googlepay-button-container" class="h-10" x-show="showGooglePayButton">
-                <div id="ckoGooglePayButton-inNavigationContainer">
-                    <!-- Google Pay button will be rendered here -->
+                <div id="checkoutcom-googlepay-button-container" class="h-10" x-show="showGooglePayButton">
+                    <div id="ckoGooglePayButton-inNavigationContainer">
+                        <!-- Google Pay button will be rendered here -->
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </nav>
 
     <script>
         function checkoutButtons() {
@@ -53,6 +55,10 @@ $next      = $checkout->getStepAfter($navigator->getActiveStep())
                 showApplePayButton: false,
                 showGooglePayButton: false,
 
+                init() {
+                    this.initButtons();
+                },
+
                 handlePaymentMethodChange(event) {
                     const method = event.detail?.method;
 
@@ -60,12 +66,20 @@ $next      = $checkout->getStepAfter($navigator->getActiveStep())
                     this.showApplePayButton = false;
                     this.showGooglePayButton = false;
 
-                    if (method === 'checkoutcom_apple_pay') {
-                        this.showApplePayButton = true;
-                        this.showPlaceOrderButton = false;
-                    } else if (method === 'checkoutcom_google_pay') {
-                        this.showGooglePayButton = true;
-                        this.showPlaceOrderButton = false;
+                    switch (method) {
+                        case 'checkoutcom_apple_pay':
+                            this.showApplePayButton = true;
+                            this.showPlaceOrderButton = false;
+                            break;
+                        case 'checkoutcom_google_pay':
+                            this.showGooglePayButton = true;
+                            this.showPlaceOrderButton = false;
+                            break;
+                        case 'checkoutcom_card_payment':
+                            break;
+                        default:
+                            // Reset wallet buttons for other payment methods
+                            break;
                     }
                 },
 
@@ -87,6 +101,14 @@ $next      = $checkout->getStepAfter($navigator->getActiveStep())
                         }
                     });
 
+                    Magewire.on('payment_method_selected', () => {
+                        const placeOrderButton = document.querySelector('.btn-place-order');
+                        if (placeOrderButton) {
+                            placeOrderButton.removeAttribute('disabled');
+                            placeOrderButton.classList.remove('loading');
+                        }
+                    });
+
                     // Check if a wallet payment method is already selected (e.g. on page reload)
                     setTimeout(() => {
                         const applePaySelected = document.querySelector('input[value="checkoutcom_apple_pay"]:checked');
@@ -103,5 +125,11 @@ $next      = $checkout->getStepAfter($navigator->getActiveStep())
                 }
             };
         }
+
+        window.addEventListener('alpine:init', () => {
+            Alpine.data('checkoutButtons', checkoutButtons);
+        }, { once: true });
     </script>
+    <?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>
 <?php endif ?>
+

@@ -16,8 +16,11 @@ use Magento\Framework\View\Element\Template;
 /** @var Escaper $escaper */
 ?>
 
-<div x-data="initCheckoutComGooglePay('<?= $escaper->escapeJs($block->getNameInLayout()) ?>')"
-     x-init="setupGooglePay()">
-
+<div
+    x-data="checkoutComGooglePay"
+    x-init="init"
+    data-component-name="<?= $escaper->escapeHtmlAttr($block->getNameInLayout()) ?>"
+    data-payment-method="googlepay"
+>
     <?= $escaper->escapeHtml(__('Please use Google Pay button to complete the order.')) ?>
 </div>
