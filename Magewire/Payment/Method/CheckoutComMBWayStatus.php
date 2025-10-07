@@ -14,7 +14,7 @@ use Exception;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\Serialize\Serializer\Json as JsonSerializer;
-use Magebit\CheckoutComPayment\Helper\Config;
+use Magebit\CheckoutComPayment\ViewModel\MbWay as Config;
 use Magewirephp\Magewire\Component;
 use Magewirephp\Magewire\Model\Concern\Redirect as RedirectTrait;
 use Psr\Log\LoggerInterface;
@@ -86,7 +86,7 @@ class CheckoutComMBWayStatus extends Component
      *
      * @return void
      */
-    private function ensureOrderIncrement(): void
+    public function ensureOrderIncrement(): void
     {
         if (empty($this->orderIncrement)) {
             try {
@@ -163,7 +163,7 @@ class CheckoutComMBWayStatus extends Component
      * @param string $orderIncrement
      * @return array
      */
-    private function getWebhooksForOrder(string $orderIncrement): array
+    public function getWebhooksForOrder(string $orderIncrement): array
     {
         try {
             $connection = $this->resourceConnection->getConnection();
@@ -210,7 +210,7 @@ class CheckoutComMBWayStatus extends Component
      * @param array $allEvents
      * @return void
      */
-    private function handleMultipleWebhookEvents(array $allEvents): void
+    public function handleMultipleWebhookEvents(array $allEvents): void
     {
         $hasSuccessCode = false;
         $hasFailureCode = false;
@@ -267,7 +267,7 @@ class CheckoutComMBWayStatus extends Component
      * @param string $eventType
      * @return bool
      */
-    private function isEventInAdditionalSuccessStates(string $eventType): bool
+    public function isEventInAdditionalSuccessStates(string $eventType): bool
     {
         $states = $this->config->getMbWayAdditionalSuccessStates();
         return in_array($eventType, $states, true);

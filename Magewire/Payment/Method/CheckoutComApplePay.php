@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Magebit\CheckoutComPayment\Magewire\Payment\Method;
 
 use Magebit\CheckoutComPayment\Model\Magewire\Payment\CheckoutComPlaceOrderService;
-use Magebit\CheckoutComPayment\ViewModel\Data;
+use Magebit\CheckoutComPayment\ViewModel\Utilities;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -43,12 +43,12 @@ class CheckoutComApplePay extends Component
     /**
      * @param CheckoutSession $checkoutSession
      * @param CheckoutComPlaceOrderService $placeOrderService
-     * @param Data $checkoutViewModel
+     * @param Utilities $checkoutViewModel
      */
     public function __construct(
         private readonly CheckoutSession $checkoutSession,
         private readonly CheckoutComPlaceOrderService $placeOrderService,
-        private readonly Data $checkoutViewModel
+        private readonly Utilities $checkoutViewModel
     ) {
     }
 

@@ -22,10 +22,10 @@ bin/magento module:enable Magebit_CheckoutComPayment && bin/magento setup:upgrad
     - [ ] Minicart
 - [x] Apple Pay
     - [x] Checkout Page
-    - [ ] Cart
-    - [ ] Minicart
+    - [X] Cart
+    - [X] Minicart
 - [x] Alternative payment methods
-    - [X] MB PAY
+    - [X] MB WAY
 
 ### Functionality that is currently not supported:
 * Adding a new Stored Card from My Account -> Stored Payment Methods

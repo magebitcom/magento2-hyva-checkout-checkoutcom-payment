@@ -1,0 +1,45 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magebit\CheckoutComPayment\ViewModel\ApplePay;
+use Magebit\CheckoutComPayment\ViewModel\Utilities;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var Escaper $escaper */
+/** @var ViewModelRegistry $viewModels */
+
+$appleConfig = $viewModels->require(ApplePay::class);
+$utilities = $viewModels->require(Utilities::class);
+$isMinicart = $block->getNameInLayout() === 'checkoutcom.applepay.minicart.button';
+?>
+
+<div
+    x-data="checkoutComApplePayCart"
+    x-init="init"
+    x-cloak
+    x-show="shouldShowButton"
+    @private-content-loaded.window="getCartData($event.detail.data)"
+    data-component-name="<?= $escaper->escapeHtmlAttr($block->getNameInLayout()) ?>"
+    data-payment-method="applepay"
+    data-cart-id="<?= $escaper->escapeHtmlAttr($utilities->getCartId()) ?>"
+    data-apple-pay-config="<?= $escaper->escapeHtmlAttr($appleConfig->getApplePayConfigJson()) ?>"
+    class="checkoutcom-applepay-cart"
+>
+    <div class="checkoutcom-applepay-cart-button-wrapper">
+        <div id="<?= /* @noEscape */ $isMinicart ? 'ckoApplePayButton-minicart' : 'ckoApplePayButton-cart' ?>"
+             class="checkoutcom-applepay-button-cart <?= /* @noEscape */ $isMinicart ? 'sm:px-6 px-4 py-3' : '' ?>">
+
+            <!-- Apple Pay button will be rendered here -->
+
+        </div>
+    </div>
+</div>

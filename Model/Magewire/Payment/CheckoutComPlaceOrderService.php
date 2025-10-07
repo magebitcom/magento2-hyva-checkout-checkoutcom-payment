@@ -11,6 +11,7 @@ namespace Magebit\CheckoutComPayment\Model\Magewire\Payment;
 
 use CheckoutCom\Magento2\Gateway\Config\Config;
 use CheckoutCom\Magento2\Helper\Logger;
+use Psr\Log\LoggerInterface;
 use CheckoutCom\Magento2\Helper\Utilities;
 use CheckoutCom\Magento2\Model\Service\ApiHandlerService;
 use CheckoutCom\Magento2\Model\Service\MethodHandlerService;
@@ -46,6 +47,11 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
     private string $urlRedirect = parent::REDIRECT_PATH;
 
     /**
+     * @var bool
+     */
+    private bool $disableRedirect = false;
+
+    /**
      * @param StoreManagerInterface $storeManager
      * @param ScopeConfigInterface $scopeConfig
      * @param QuoteHandlerService $quoteHandler
@@ -56,6 +62,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
      * @param PaymentErrorHandlerService $paymentErrorHandler
      * @param Utilities $utilities
      * @param Logger $logger
+     * @param LoggerInterface $psrLogger
      * @param Session $session
      * @param OrderRepositoryInterface $orderRepository
      * @param JsonSerializer $json
@@ -75,6 +82,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
         private readonly PaymentErrorHandlerService $paymentErrorHandler,
         private readonly Utilities $utilities,
         private readonly Logger $logger,
+        private readonly LoggerInterface $psrLogger,
         private readonly Session $session,
         private readonly OrderRepositoryInterface $orderRepository,
         private readonly JsonSerializer $json,

@@ -8,7 +8,8 @@
 declare(strict_types=1);
 
 use Magebit\CheckoutComPayment\Helper\Config;
-use Magebit\CheckoutComPayment\ViewModel\Data;
+use Magebit\CheckoutComPayment\ViewModel\GooglePay;
+use Magebit\CheckoutComPayment\ViewModel\Utilities;
 use Hyva\Theme\Model\ViewModelRegistry;
 use Magento\Framework\Escaper;
 use Magento\Framework\View\Element\Template;
@@ -17,8 +18,9 @@ use Magento\Framework\View\Element\Template;
 /** @var Template $block */
 /** @var ViewModelRegistry $viewModels */
 
-$config = $viewModels->require(Config::class);
-$orderData = $viewModels->require(Data::class);
+$mainConfig = $viewModels->require(Config::class);
+$googleConfig = $viewModels->require(GooglePay::class);
+$orderData = $viewModels->require(Utilities::class);
 ?>
 <script>
     function initCheckoutComGooglePay(componentName) {
@@ -26,14 +28,14 @@ $orderData = $viewModels->require(Data::class);
         const googlePayComponent = Magewire.find(componentName);
 
         const googlePayConfig = {
-            environment: '<?= $escaper->escapeJs($config->getEnvironment()) ?>',
-            merchantId: '<?= $escaper->escapeJs($config->getGoogleMerchantId()) ?>',
-            merchantName: '<?= $escaper->escapeJs($config->getStoreName()) ?>',
-            gateway: '<?= $escaper->escapeJs($config->getGatewayName()) ?>',
-            gatewayMerchantId: '<?= $escaper->escapeJs($config->getPublicKey()) ?>',
-            buttonColor: '<?= $escaper->escapeJs($config->getGoogleButtonStyle()) ?>',
-            buttonRadius: '<?= $escaper->escapeJs($config->getGoogleButtonRadius()) ?>',
-            allowedCardNetworks: <?= /** noEscape */ json_encode($config->getGoogleAllowedCardNetworks()) ?>,
+            environment: '<?= $escaper->escapeJs($googleConfig->getEnvironment()) ?>',
+            merchantId: '<?= $escaper->escapeJs($googleConfig->getGoogleMerchantId()) ?>',
+            merchantName: '<?= $escaper->escapeJs($mainConfig->getStoreName()) ?>',
+            gateway: '<?= $escaper->escapeJs($googleConfig->getGatewayName()) ?>',
+            gatewayMerchantId: '<?= $escaper->escapeJs($mainConfig->getPublicKey()) ?>',
+            buttonColor: '<?= $escaper->escapeJs($googleConfig->getGoogleButtonStyle()) ?>',
+            buttonRadius: '<?= $escaper->escapeJs($googleConfig->getGoogleButtonRadius()) ?>',
+            allowedCardNetworks: <?= /** noEscape */ json_encode($googleConfig->getGoogleAllowedCardNetworks()) ?>,
             currency: '<?= $escaper->escapeJs($orderData->getCurrency()) ?>'
         };
 

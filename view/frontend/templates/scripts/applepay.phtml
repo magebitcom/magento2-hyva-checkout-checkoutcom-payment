@@ -8,8 +8,8 @@
 declare(strict_types=1);
 
 use Magebit\CheckoutComPayment\Helper\Config;
-use Magebit\CheckoutComPayment\ViewModel\Data;
 use Magebit\CheckoutComPayment\ViewModel\ApplePay;
+use Magebit\CheckoutComPayment\ViewModel\Utilities;
 use Hyva\Theme\Model\ViewModelRegistry;
 use Magento\Framework\Escaper;
 use Magento\Framework\View\Element\Template;
@@ -18,9 +18,9 @@ use Magento\Framework\View\Element\Template;
 /** @var Template $block */
 /** @var ViewModelRegistry $viewModels */
 
-$config = $viewModels->require(Config::class);
-$orderData = $viewModels->require(Data::class);
-$applePay = $viewModels->require(ApplePay::class);
+$appleConfig = $viewModels->require(ApplePay::class);
+$mainConfig = $viewModels->require(Config::class);
+$orderData = $viewModels->require(Utilities::class);
 ?>
 <script>
     function initCheckoutComApplePay(componentName) {
@@ -31,15 +31,15 @@ $applePay = $viewModels->require(ApplePay::class);
         let applePaySession = null;
 
         const applePayConfig = {
-            merchantName: '<?= $escaper->escapeJs($config->getStoreName()) ?>',
-            merchantId: '<?= $escaper->escapeJs($config->getAppleMerchantID()) ?>',
-            country: '<?= $escaper->escapeJs($config->getStoreCountry()) ?>',
+            merchantName: '<?= $escaper->escapeJs($mainConfig->getStoreName()) ?>',
+            merchantId: '<?= $escaper->escapeJs($appleConfig->getAppleMerchantID()) ?>',
+            country: '<?= $escaper->escapeJs($mainConfig->getStoreCountry()) ?>',
             currency: '<?= $escaper->escapeJs($orderData->getCurrency()) ?>',
-            allowedNetworks: <?= /* @noEscape */ json_encode($applePay->getSupportedNetworks()) ?>,
-            merchantCapabilities: <?= /* @noEscape */ json_encode($config->getAppleMerchantCapabilities()) ?>,
-            buttonStyle: '<?= $escaper->escapeJs($config->getAppleButtonStyle()) ?>',
-            buttonRadius: '<?= $escaper->escapeJs($config->getAppleButtonRadius()) ?>',
-            buttonHeight: '<?= $escaper->escapeJs($config->getAppleButtonHeight()) ?>'
+            allowedNetworks: <?= /* @noEscape */ json_encode($appleConfig->getSupportedNetworks()) ?>,
+            merchantCapabilities: <?= /* @noEscape */ json_encode($appleConfig->getAppleMerchantCapabilities()) ?>,
+            buttonStyle: '<?= $escaper->escapeJs($appleConfig->getAppleButtonStyle()) ?>',
+            buttonRadius: '<?= $escaper->escapeJs($appleConfig->getAppleButtonRadius()) ?>',
+            buttonHeight: '<?= $escaper->escapeJs($appleConfig->getAppleButtonHeight()) ?>'
         };
 
         function getHighestSupportedApplePayVersion() {
@@ -53,7 +53,7 @@ $applePay = $viewModels->require(ApplePay::class);
                 countryCode: applePayConfig.country,
                 currencyCode: applePayConfig.currency,
                 supportedNetworks: applePayConfig.allowedNetworks,
-                merchantCapabilities: [...applePayConfig.merchantCapabilities, 'supports3DS'],
+                merchantCapabilities: applePayConfig.merchantCapabilities,
                 total: {
                     label: applePayConfig.merchantName,
                     amount: currentTotal.toFixed(2),

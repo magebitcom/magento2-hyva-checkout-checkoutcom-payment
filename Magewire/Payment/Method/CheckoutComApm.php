@@ -12,7 +12,7 @@ namespace Magebit\CheckoutComPayment\Magewire\Payment\Method;
 use Hyva\Checkout\Model\Magewire\Component\EvaluationInterface;
 use Hyva\Checkout\Model\Magewire\Component\EvaluationResultFactory;
 use Hyva\Checkout\Model\Magewire\Component\EvaluationResultInterface;
-use Magebit\CheckoutComPayment\Helper\Config;
+use Magebit\CheckoutComPayment\ViewModel\MbWay as Config;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magewirephp\Magewire\Component\Form;
 use Rakit\Validation\Validator;
@@ -123,7 +123,7 @@ class CheckoutComApm extends Form implements EvaluationInterface
      * @param $value
      * @return void
      */
-    private function updateApmData(string $method, string $key, $value): void
+    public function updateApmData(string $method, string $key, $value): void
     {
         $apmData = $this->checkoutSession->getData(self::APM_DATA) ?: [];
 
@@ -185,7 +185,7 @@ class CheckoutComApm extends Form implements EvaluationInterface
      * @param $phoneNumber
      * @return bool
      */
-    private function isNumberValid($phoneNumber): bool
+    public function isNumberValid($phoneNumber): bool
     {
         return strlen($phoneNumber) === 9 && str_starts_with($phoneNumber, '9');
     }

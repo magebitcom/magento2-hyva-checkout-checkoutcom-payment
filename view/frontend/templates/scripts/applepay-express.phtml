@@ -1,0 +1,724 @@
+<?php
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+
+declare(strict_types=1);
+
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+?>
+<script>
+    function checkoutComApplePayCart() {
+        return {
+            applePaySession: null,
+            selectedShippingMethod: null,
+            shippingMethodsAvailable: null,
+            shippingAddress: null,
+            totalsBreakdown: null,
+            isApplePayAvailable: false,
+            shouldShowButton: false,
+            isApplePayButtonRendered: false,
+            isProcessing: false,
+            errorMessage: '',
+            applePayConfig: null,
+            cartId: null,
+            isInitialized: false,
+            rootEl: null,
+            itemsCount: 0,
+
+            // Dynamic session data (initialized from cart data, not config)
+            isCustomerLoggedIn: false,
+            isVirtual: false,
+            amount: 0,
+            currency: null,
+
+            /**
+             * In Alpine, this.$el is the DOM element where the component's x-data is declared. We store a reference to the
+             * component's root element so all DOM queries can be scoped to that specific instance to prevent cross-instance clashes
+             */
+            getButtonContainerRoot() {
+                return this.rootEl ? this.rootEl.querySelector('.checkoutcom-applepay-button-cart') : null;
+            },
+
+            init() {
+                if (this.isInitialized) {
+                    return;
+                }
+
+                this.isInitialized = true;
+                this.rootEl = this.$el;
+                this.loadConfig();
+                this.setupApplePay();
+            },
+
+            getCartData(data) {
+                if (!data.cart) {
+                    return;
+                }
+
+                const items = Array.isArray(data.cart.items) ? data.cart.items : [];
+                const newCount = items.length;
+
+                // Update customer logged in status from customer-data section (not cached)
+                const isLoggedIn = !!(data.customer && data.customer.firstname);
+                if (this.isCustomerLoggedIn !== isLoggedIn) {
+                    this.isCustomerLoggedIn = isLoggedIn;
+                }
+
+                // Update cart ID (masked cart ID works for both guests and logged-in customers)
+                if (data.cart.cartId && data.cart.cartId !== this.cartId) {
+                    this.cartId = data.cart.cartId;
+                }
+
+                // Update amount from cart subtotal
+                if (data.cart.subtotalAmount !== undefined) {
+                    const newAmount = parseFloat(data.cart.subtotalAmount);
+                    if (!isNaN(newAmount) && this.amount !== newAmount) {
+                        this.amount = newAmount;
+                    }
+                }
+
+                // Update currency from checkout config provider
+                if (!this.currency && data.cart.checkoutConfigProvider?.quoteData?.quote_currency_code) {
+                    this.currency = data.cart.checkoutConfigProvider.quoteData.quote_currency_code;
+                }
+
+                // Update isVirtual flag based on cart composition
+                if (data.cart.checkoutConfigProvider?.quoteData?.is_virtual !== undefined) {
+                    const isVirtual = Boolean(data.cart.checkoutConfigProvider.quoteData.is_virtual);
+                    if (this.isVirtual !== isVirtual) {
+                        this.isVirtual = isVirtual;
+                    }
+                }
+
+                // Update item count and button visibility
+                if (this.itemsCount !== newCount) {
+                    this.itemsCount = newCount;
+                    this.updateShouldShow();
+                }
+            },
+
+            updateShouldShow() {
+                const newValue = !!(this.isApplePayAvailable && this.itemsCount > 0);
+
+                if (this.shouldShowButton !== newValue) {
+                    this.shouldShowButton = newValue;
+                }
+            },
+
+            loadConfig() {
+                if (!this.rootEl) {
+                    return;
+                }
+
+                const configJson = this.rootEl.dataset.applePayConfig;
+                this.applePayConfig = JSON.parse(configJson);
+
+                const cartId = this.rootEl.dataset.cartId;
+                if (cartId) {
+                    this.cartId = cartId;
+                }
+            },
+
+            async setupApplePay() {
+                if (!this.applePayConfig) {
+                    return;
+                }
+
+                try {
+                    if (!window.ApplePaySession || !ApplePaySession.canMakePayments()) {
+                        return;
+                    }
+                    this.isApplePayAvailable = true;
+                    const buttonContainer = this.getButtonContainerRoot();
+
+                    if (!buttonContainer) {
+                        this.displayError('<?= $escaper->escapeJs(__('Apple Pay button container not found')) ?>');
+                        return;
+                    }
+
+                    buttonContainer.innerHTML = '';
+                    const applePayButton = this.createApplePayButton();
+                    buttonContainer.appendChild(applePayButton);
+                    this.isApplePayButtonRendered = true;
+                } catch (error) {
+                    this.displayError('<?= $escaper->escapeJs(__('Failed to setup Apple Pay')) ?>: ' + (error.message || '<?= $escaper->escapeJs(__('Unknown error')) ?>'));
+                }
+            },
+
+            createApplePayButton() {
+                const button = document.createElement('apple-pay-button');
+                button.setAttribute('buttonstyle', this.applePayConfig.buttonStyle);
+                button.setAttribute('type', 'buy');
+                button.style.cssText =
+                    `-webkit-appearance: -apple-pay-button; ` +
+                    `height: ${this.applePayConfig.buttonHeight}px; ` +
+                    `width: 100%; ` +
+                    `border-radius: ${this.applePayConfig.buttonRadius}px; ` +
+                    `cursor: pointer;`;
+                button.onclick = () => this.onApplePayButtonClick();
+                return button;
+            },
+
+            onApplePayButtonClick() {
+                try {
+                    const version = this.getHighestSupportedApplePayVersion();
+                    const paymentRequest = this.getApplePayPaymentRequest();
+
+                    this.applePaySession = new window.ApplePaySession(version, paymentRequest);
+
+                    this.applePaySession.onvalidatemerchant = (event) => this.runValidations(event);
+                    this.applePaySession.onpaymentauthorized = (event) => this.handlePaymentAuthorized(event);
+
+                    if (!this.isVirtual) {
+                        this.applePaySession.onshippingcontactselected = (event) => this.handleShippingContactSelected(event);
+                        this.applePaySession.onshippingmethodselected = (event) => this.handleShippingMethodSelected(event);
+                    }
+
+                    this.applePaySession.begin();
+                } catch (error) {
+                    this.displayError('<?= $escaper->escapeJs(__('Failed to initialize Apple Pay')) ?>: ' + error.message);
+                }
+            },
+
+            getHighestSupportedApplePayVersion() {
+                return [15, 14, 13].find(version => ApplePaySession.supportsVersion(version)) || 6;
+            },
+
+            getApplePayPaymentRequest() {
+                const baseRequest = {
+                    countryCode: this.applePayConfig.country,
+                    currencyCode: this.currency,
+                    supportedNetworks: this.applePayConfig.supportedNetworks,
+                    merchantCapabilities: this.applePayConfig.merchantCapabilities,
+                    total: {
+                        label: this.applePayConfig.merchantName,
+                        amount: this.amount.toFixed(2),
+                        type: 'final'
+                    }
+                };
+
+                if (this.isVirtual) {
+                    return {
+                        ...baseRequest,
+                        requiredBillingContactFields: ["postalAddress", "name", "phone", "email"],
+                        requiredShippingContactFields: ["phone", "email"]
+                    };
+                } else {
+                    return {
+                        ...baseRequest,
+                        requiredShippingContactFields: ["postalAddress", "name", "phone", "email"],
+                        requiredBillingContactFields: ["postalAddress", "name", "phone", "email"],
+                        shippingMethods: []
+                    };
+                }
+            },
+
+            async runValidations(event) {
+                try {
+                    await this.validateMerchant(event.validationURL);
+                } catch (error) {
+                    this.applePaySession.abort();
+                    this.displayError('<?= $escaper->escapeJs(__('Merchant validation error')) ?>: ' + error.message);
+                }
+            },
+
+            async validateMerchant(validationURL) {
+                const fullUrl = `${this.applePayConfig.validationUrl}?u=${encodeURIComponent(validationURL)}&method_id=${this.applePayConfig.methodId}`;
+
+                try {
+                    const response = await fetch(fullUrl);
+                    if (!response.ok) {
+                        this.displayError('<?= $escaper->escapeJs(__('Merchant validation failed with status')) ?>: ' + response.status);
+                        return;
+                    }
+                    const merchantSession = await response.json();
+                    this.applePaySession.completeMerchantValidation(merchantSession);
+                } catch (error) {
+                    this.applePaySession.abort();
+                    this.displayError('<?= $escaper->escapeJs(__('Apple Pay merchant validation failed')) ?>: ' + error.message);
+                }
+            },
+
+            validateShippingContactForEstimate(contact) {
+                if (!contact) {
+                    return new ApplePayError(
+                        "shippingContactInvalid",
+                        "postalAddress",
+                        '<?= $escaper->escapeJs(__('Please provide a shipping address')) ?>'
+                    );
+                }
+
+                if (!contact.countryCode || contact.countryCode.trim() === '') {
+                    return new ApplePayError(
+                        "shippingContactInvalid",
+                        "countryCode",
+                        '<?= $escaper->escapeJs(__('Please select a country for shipping')) ?>'
+                    );
+                }
+
+                /**
+                 * Check if postal code is provided for countries that typically need it, need to check countryCode
+                 * against the list of country codes that do not require postal code
+                 */
+                const countriesNotRequiringPostalCode = this.applePayConfig.countriesNotRequiringPostalCode;
+
+                if (!countriesNotRequiringPostalCode.includes(contact.countryCode.toUpperCase())) {
+                    if (!contact.postalCode || contact.postalCode.trim() === '') {
+                        return new ApplePayError(
+                            "shippingContactInvalid",
+                            "postalCode",
+                            '<?= $escaper->escapeJs(__('Please update your address to include a postal code')) ?>'
+                        );
+                    }
+                }
+                return null;
+            },
+
+            handleShippingContactSelected(event) {
+                this.shippingAddress = event.shippingContact;
+
+                const validationError = this.validateShippingContactForEstimate(this.shippingAddress);
+                if (validationError) {
+                    console.error('[CheckoutCom Apple Pay Cart] Invalid shipping contact for estimate:', validationError);
+                    this.applePaySession.completeShippingContactSelection({
+                        status: ApplePaySession.STATUS_FAILURE,
+                        errors: [validationError],
+                        newTotal: {
+                            type: 'final',
+                            label: this.applePayConfig.merchantName,
+                            amount: this.applePayConfig.amount.toFixed(2)
+                        }
+                    });
+                    return;
+                }
+
+                let currentShippingOptions = []; // Store shipping options in this scope
+
+                this.getShippingMethods(this.shippingAddress.countryCode, this.shippingAddress.postalCode)
+                    .then(shippingOptions => {
+                        currentShippingOptions = shippingOptions; // Store for later use
+                        if (shippingOptions.length > 0) {
+                            return this.getCartTotals(this.shippingAddress);
+                        } else {
+                            throw new Error('<?= $escaper->escapeJs(__('No shipping methods available for this address')) ?>');
+                        }
+                    })
+                    .then(totals => {
+                        this.totalsBreakdown = totals;
+                        this.applePaySession.completeShippingContactSelection(
+                            ApplePaySession.STATUS_SUCCESS,
+                            currentShippingOptions, // Use the stored variable
+                            totals.total,
+                            totals.breakdown
+                        );
+                    })
+                    .catch(error => {
+                        console.error('[CheckoutCom Apple Pay Cart] Shipping contact selection error:', error);
+                        this.applePaySession.completeShippingContactSelection({
+                            status: ApplePaySession.STATUS_FAILURE,
+                            errors: [new ApplePayError(
+                                "addressUnserviceable",
+                                "country",
+                                error.message
+                            )],
+                            newTotal: {
+                                type: 'final',
+                                label: this.applePayConfig.merchantName,
+                                amount: this.applePayConfig.amount.toFixed(2)
+                            }
+                        });
+                    });
+            },
+
+            handleShippingMethodSelected(event) {
+                this.shippingMethodsAvailable.forEach(method => {
+                    if (method.method_code === event.shippingMethod.identifier) {
+                        this.selectedShippingMethod = method;
+                    }
+                });
+
+                // Calculate new totals with updated shipping cost
+                if (this.totalsBreakdown && this.totalsBreakdown.breakdown) {
+                    // Update shipping cost in the breakdown
+                    const updatedBreakdown = this.totalsBreakdown.breakdown.map(item => {
+                        if (item.label === 'Shipping & Handling') {
+                            return {
+                                ...item,
+                                amount: parseFloat(this.selectedShippingMethod.amount).toFixed(2)
+                            };
+                        }
+                        return item;
+                    });
+
+                    // Recalculate grand total
+                    let grandTotal = 0;
+                    updatedBreakdown.forEach(item => {
+                        grandTotal += parseFloat(item.amount);
+                    });
+
+                    const updatedTotals = {
+                        breakdown: updatedBreakdown,
+                        total: {
+                            type: 'final',
+                            label: this.applePayConfig.merchantName,
+                            amount: grandTotal.toFixed(2)
+                        }
+                    };
+
+                    this.totalsBreakdown = updatedTotals;
+
+                    this.applePaySession.completeShippingMethodSelection(
+                        ApplePaySession.STATUS_SUCCESS,
+                        updatedTotals.total,
+                        updatedTotals.breakdown
+                    );
+                } else {
+                    this.applePaySession.completeShippingMethodSelection(ApplePaySession.STATUS_FAILURE);
+                }
+            },
+
+            async handlePaymentAuthorized(event) {
+                try {
+                    // First, save shipping and billing addresses to the quote
+                    if (this.isVirtual) {
+                        await this.setBilling(event.payment.shippingContact, event.payment.billingContact);
+                    } else {
+                        await this.setShippingAndBilling(event.payment.shippingContact, event.payment.billingContact);
+                    }
+
+                    // Then place the order
+                    const paymentData = {
+                        methodId: this.applePayConfig.methodId,
+                        cardToken: event.payment.token,
+                        source: this.applePayConfig.methodId
+                    };
+
+                    const orderResult = await this.placeOrder(paymentData);
+
+                    if (orderResult.success) {
+                        this.applePaySession.completePayment(ApplePaySession.STATUS_SUCCESS);
+                        window.location.href = '<?= $escaper->escapeUrl($block->getUrl('checkout/onepage/success')) ?>';
+                    } else {
+                        this.applePaySession.completePayment(ApplePaySession.STATUS_FAILURE);
+                        this.displayError('<?= $escaper->escapeJs(__('Payment failed')) ?>');
+                    }
+                } catch (error) {
+                    this.applePaySession.completePayment(ApplePaySession.STATUS_FAILURE);
+                    this.displayError('<?= $escaper->escapeJs(__('Error processing payment')) ?>: ' + error.message);
+                }
+            },
+
+            async placeOrder(paymentData) {
+                // Send exactly like vendor's jQuery ajax does - as form data with token as JSON string
+                const params = new URLSearchParams();
+                params.append('methodId', paymentData.methodId);
+                params.append('cardToken', JSON.stringify(paymentData.cardToken));
+                params.append('source', paymentData.source);
+
+                const response = await fetch(this.applePayConfig.placeOrderUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: params.toString()
+                });
+
+                if (!response.ok) {
+                    console.error('[CheckoutCom Apple Pay Cart] Place order request failed with status:', response.status);
+                    throw new Error('<?= $escaper->escapeJs(__('Network response was not ok')) ?>');
+                }
+
+                const result = await response.json();
+                return result;
+            },
+
+            async getShippingMethods(countryCode, postalCode) {
+                // Use guest-cart endpoints for both guests and logged-in customers
+                // This avoids session authentication issues with REST API
+                const url = `/rest/all/V1/guest-carts/${this.cartId}/estimate-shipping-methods`;
+
+                const requestBody = {
+                    address: {
+                        country_id: countryCode.toUpperCase(),
+                        postcode: postalCode
+                    }
+                };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    console.error('[CheckoutCom Apple Pay Cart] Failed to fetch shipping methods, status:', response.status);
+                    throw new Error('<?= $escaper->escapeJs(__('Failed to fetch shipping methods')) ?>');
+                }
+
+                const methods = await response.json();
+                this.shippingMethodsAvailable = methods;
+
+                // Return first available method as selected
+                this.selectedShippingMethod = methods[0];
+
+                return methods
+                    .filter(method => method.available)
+                    .map(method => ({
+                        label: method.method_title || method.carrier_title || 'Shipping',
+                        amount: (method.price_incl_tax || method.amount || 0).toFixed(2),
+                        identifier: method.method_code,
+                        detail: method.carrier_title || ''
+                    }));
+            },
+
+            async getCartTotals(address) {
+                // Use guest-cart endpoints for both guests and logged-in customers
+                const url = `/rest/all/V1/guest-carts/${this.cartId}/totals-information`;
+
+                const requestBody = {
+                    addressInformation: {
+                        address: {
+                            country_id: address.countryCode.toUpperCase(),
+                            postcode: address.postalCode,
+                            region_code: '',
+                            region_id: 0
+                        },
+                        shipping_carrier_code: this.selectedShippingMethod ? this.selectedShippingMethod.carrier_code : '',
+                        shipping_method_code: this.selectedShippingMethod ? this.selectedShippingMethod.method_code : ''
+                    }
+                };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    console.error('[CheckoutCom Apple Pay Cart] Failed to calculate totals, status:', response.status);
+                    const errorText = await response.text();
+                    console.error('[CheckoutCom Apple Pay Cart] Error response:', errorText);
+                    throw new Error('<?= $escaper->escapeJs(__('Failed to calculate totals')) ?>');
+                }
+
+                const totals = await response.json();
+                const breakdown = [];
+
+                totals.total_segments.forEach(segment => {
+                    if (segment.code === 'grand_total') return;
+                    if (segment.code === 'tax' && segment.value === 0) return;
+                    if (segment.code === 'giftwrapping' && segment.value === null) return;
+
+                    breakdown.push({
+                        type: 'final',
+                        label: segment.title,
+                        amount: segment.value.toFixed(2)
+                    });
+                });
+
+                return {
+                    breakdown: breakdown,
+                    total: {
+                        type: 'final',
+                        label: this.applePayConfig.merchantName,
+                        amount: totals.grand_total.toFixed(2)
+                    }
+                };
+            },
+
+            /**
+             * Apple Pay has mixed Countries and Regions together, but Magento expects only countries for country_id,
+             * so we need to recognize certain codes which need to be mapped to region_code.
+             */
+            mapCountryAndRegion(contact) {
+                const countryCode = contact.countryCode?.toUpperCase();
+                const usTerritories = this.applePayConfig.usTerritories;
+
+                if (usTerritories.includes(countryCode)) {
+                    return {
+                        country_id: 'US',
+                        region_code: countryCode,
+                        region: countryCode
+                    };
+                }
+
+                return {
+                    country_id: countryCode,
+                    region_code: contact.administrativeArea || null,
+                    region: contact.administrativeArea || ''
+                };
+            },
+
+            async setShippingAndBilling(shippingContact, billingContact) {
+                // For write operations, use correct endpoint based on login status
+                // Magento security prevents guest-cart endpoints from modifying logged-in customer carts
+                let url;
+                if (this.isCustomerLoggedIn) {
+                    const storeCode = window.checkoutConfig?.storeCode || 'default';
+                    url = `/rest/${storeCode}/V1/carts/mine/shipping-information`;
+                } else {
+                    url = `/rest/all/V1/guest-carts/${this.cartId}/shipping-information`;
+                }
+
+                // Validate shipping method is selected
+                if (!this.selectedShippingMethod) {
+                    console.error('[CheckoutCom Apple Pay Cart] No shipping method selected');
+                    throw new Error('<?= $escaper->escapeJs(__('No shipping method selected')) ?>');
+                }
+
+                const shippingMapping = this.mapCountryAndRegion(shippingContact);
+                const billingMapping = this.mapCountryAndRegion(billingContact);
+
+                const requestBody = {
+                    addressInformation: {
+                        shipping_address: {
+                            email: shippingContact.emailAddress,
+                            telephone: shippingContact.phoneNumber,
+                            firstname: shippingContact.givenName,
+                            lastname: shippingContact.familyName,
+                            street: shippingContact.addressLines,
+                            city: shippingContact.locality || '',
+                            region: shippingMapping.region,
+                            region_id: 0,
+                            region_code: shippingMapping.region_code,
+                            country_id: shippingMapping.country_id,
+                            postcode: shippingContact.postalCode || '',
+                            same_as_billing: 0,
+                            customer_address_id: 0,
+                            save_in_address_book: 0
+                        },
+                        billing_address: {
+                            email: shippingContact.emailAddress,
+                            telephone: shippingContact.phoneNumber, // Apple Pay has only one phone contact, use shipping
+                            firstname: billingContact.givenName,
+                            lastname: billingContact.familyName,
+                            street: billingContact.addressLines,
+                            city: billingContact.locality || '',
+                            region: billingMapping.region,
+                            region_id: 0,
+                            region_code: billingMapping.region_code,
+                            country_id: billingMapping.country_id,
+                            postcode: billingContact.postalCode || '',
+                            same_as_billing: 0,
+                            customer_address_id: 0,
+                            save_in_address_book: 0
+                        },
+                        shipping_carrier_code: this.selectedShippingMethod.carrier_code,
+                        shipping_method_code: this.selectedShippingMethod.method_code
+                    }
+                };
+
+                // Use async fetch instead of synchronous XHR (iOS Safari requirement)
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+
+                // For logged-in customers, add X-Requested-With header for session authentication
+                if (this.isCustomerLoggedIn) {
+                    headers['X-Requested-With'] = 'XMLHttpRequest';
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'same-origin',
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[CheckoutCom Apple Pay Cart] Failed to set shipping info. Status: ${response.status}, Response: ${errorText}`);
+                    throw new Error('<?= $escaper->escapeJs(__('Unable to set shipping information. Please try again.')) ?>');
+                }
+
+                return await response.json();
+            },
+
+            async setBilling(shippingContact, billingContact) {
+                // For write operations, use correct endpoint based on login status
+                let url;
+                if (this.isCustomerLoggedIn) {
+                    const storeCode = window.checkoutConfig?.storeCode || 'default';
+                    url = `/rest/${storeCode}/V1/carts/mine/billing-address`;
+                } else {
+                    url = `/rest/all/V1/guest-carts/${this.cartId}/billing-address`;
+                }
+
+                const billingMapping = this.mapCountryAndRegion(billingContact);
+
+                const requestBody = {
+                    address: {
+                        country_id: billingMapping.country_id,
+                        region: billingMapping.region,
+                        region_code: billingMapping.region_code,
+                        region_id: 0,
+                        street: billingContact.addressLines,
+                        postcode: billingContact.postalCode,
+                        city: billingContact.locality || '',
+                        firstname: billingContact.givenName,
+                        lastname: billingContact.familyName,
+                        email: shippingContact.emailAddress,
+                        telephone: shippingContact.phoneNumber
+                    }
+                };
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+
+                // For logged-in customers, add X-Requested-With header for session authentication
+                if (this.isCustomerLoggedIn) {
+                    headers['X-Requested-With'] = 'XMLHttpRequest';
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'same-origin',
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    console.error('[CheckoutCom Apple Pay Cart] Failed to set billing address, status:', response.status);
+                    throw new Error('<?= $escaper->escapeJs(__('Failed to set billing address')) ?>');
+                }
+
+                return await response.json();
+            },
+
+            displayError(message) {
+                this.errorMessage = message;
+                window.dispatchMessages([{
+                    type: 'error',
+                    text: message
+                }], 5000);
+            },
+
+            displayWarning(message) {
+                window.dispatchMessages([{
+                    type: 'warning',
+                    text: message
+                }], 5000);
+            }
+        };
+    }
+
+    window.addEventListener('alpine:init', () => {
+        Alpine.data('checkoutComApplePayCart', checkoutComApplePayCart);
+    }, { once: true });
+</script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>
