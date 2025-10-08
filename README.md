@@ -85,3 +85,8 @@ Option to adjust interval at which customer waiting page will look for webhook u
 By default, the waiting page will result in success page only if webhook with response code '10000' is received. This
 config makes it possible to also select "Payment Pending" and "Payment Capture Pending" as a signal to redirect customer to success page
 although after this redirect the order still might get automatically cancelled for example because of "Transaction has expired" error.
+
+---
+![magebit (1)](https://github.com/user-attachments/assets/cdc904ce-e839-40a0-a86f-792f7ab7961f)
+
+*Developed by Magebit. Have questions or need help? Contact us at info@magebit.com or on our [website](https://magebit.com/contact).*
