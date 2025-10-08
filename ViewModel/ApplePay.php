@@ -21,13 +21,11 @@ class ApplePay implements ArgumentInterface
     /**
      * @param ScopeConfigInterface $scopeConfig
      * @param Config $config
-     * @param Utilities $utilities
      * @param UrlInterface $urls
      */
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly Config $config,
-        private readonly Utilities $utilities,
         private readonly UrlInterface $urls
     ) {
     }
@@ -274,5 +272,31 @@ class ApplePay implements ArgumentInterface
         ];
 
         return json_encode($config);
+    }
+
+    /**
+     * Is Apple Pay enabled in cart
+     *
+     * @return bool
+     */
+    public function isApplePayCartEnabled(): bool
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/enabled_on_cart',
+            ScopeInterface::SCOPE_STORE
+        );
+    }
+
+    /**
+     * Is Apple Pay enabled in minicart
+     *
+     * @return bool
+     */
+    public function isApplePayMinicartEnabled(): bool
+    {
+        return $this->scopeConfig->getValue(
+            'payment/checkoutcom_apple_pay/enabled_on_minicart',
+            ScopeInterface::SCOPE_STORE
+        );
     }
 }

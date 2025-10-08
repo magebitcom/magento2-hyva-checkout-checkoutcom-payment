@@ -7,11 +7,21 @@
 
 declare(strict_types=1);
 
+use Hyva\Theme\Model\ViewModelRegistry;
+use Magebit\CheckoutComPayment\ViewModel\ApplePay;
 use Magento\Framework\Escaper;
 use Magento\Framework\View\Element\Template;
 
 /** @var Escaper $escaper */
 /** @var Template $block */
+/** @var ViewModelRegistry $viewModels */
+
+$appleConfig = $viewModels->require(ApplePay::class);
+
+if (!$appleConfig->isApplePayCartEnabled() || !$appleConfig->isApplePayMinicartEnabled() ) {
+    return;
+}
+
 ?>
 <script>
     function checkoutComApplePayCart() {
@@ -286,7 +296,7 @@ use Magento\Framework\View\Element\Template;
 
                 const validationError = this.validateShippingContactForEstimate(this.shippingAddress);
                 if (validationError) {
-                    console.error('[CheckoutCom Apple Pay Cart] Invalid shipping contact for estimate:', validationError);
+                    console.error('Invalid shipping contact for estimate:', validationError);
                     this.applePaySession.completeShippingContactSelection({
                         status: ApplePaySession.STATUS_FAILURE,
                         errors: [validationError],
@@ -320,7 +330,7 @@ use Magento\Framework\View\Element\Template;
                         );
                     })
                     .catch(error => {
-                        console.error('[CheckoutCom Apple Pay Cart] Shipping contact selection error:', error);
+                        console.error('Shipping contact selection error:', error);
                         this.applePaySession.completeShippingContactSelection({
                             status: ApplePaySession.STATUS_FAILURE,
                             errors: [new ApplePayError(
@@ -432,12 +442,11 @@ use Magento\Framework\View\Element\Template;
                 });
 
                 if (!response.ok) {
-                    console.error('[CheckoutCom Apple Pay Cart] Place order request failed with status:', response.status);
+                    console.error('Place order request failed with status:', response.status);
                     throw new Error('<?= $escaper->escapeJs(__('Network response was not ok')) ?>');
                 }
 
-                const result = await response.json();
-                return result;
+                return await response.json();
             },
 
             async getShippingMethods(countryCode, postalCode) {
@@ -462,7 +471,7 @@ use Magento\Framework\View\Element\Template;
                 });
 
                 if (!response.ok) {
-                    console.error('[CheckoutCom Apple Pay Cart] Failed to fetch shipping methods, status:', response.status);
+                    console.error('Failed to fetch shipping methods, status:', response.status);
                     throw new Error('<?= $escaper->escapeJs(__('Failed to fetch shipping methods')) ?>');
                 }
 
@@ -509,9 +518,9 @@ use Magento\Framework\View\Element\Template;
                 });
 
                 if (!response.ok) {
-                    console.error('[CheckoutCom Apple Pay Cart] Failed to calculate totals, status:', response.status);
+                    console.error('Failed to calculate totals, status:', response.status);
                     const errorText = await response.text();
-                    console.error('[CheckoutCom Apple Pay Cart] Error response:', errorText);
+                    console.error('Error response:', errorText);
                     throw new Error('<?= $escaper->escapeJs(__('Failed to calculate totals')) ?>');
                 }
 
@@ -576,7 +585,7 @@ use Magento\Framework\View\Element\Template;
 
                 // Validate shipping method is selected
                 if (!this.selectedShippingMethod) {
-                    console.error('[CheckoutCom Apple Pay Cart] No shipping method selected');
+                    console.error('No shipping method selected');
                     throw new Error('<?= $escaper->escapeJs(__('No shipping method selected')) ?>');
                 }
 
@@ -641,7 +650,7 @@ use Magento\Framework\View\Element\Template;
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`[CheckoutCom Apple Pay Cart] Failed to set shipping info. Status: ${response.status}, Response: ${errorText}`);
+                    console.error(`Failed to set shipping info. Status: ${response.status}, Response: ${errorText}`);
                     throw new Error('<?= $escaper->escapeJs(__('Unable to set shipping information. Please try again.')) ?>');
                 }
 
@@ -693,7 +702,7 @@ use Magento\Framework\View\Element\Template;
                 });
 
                 if (!response.ok) {
-                    console.error('[CheckoutCom Apple Pay Cart] Failed to set billing address, status:', response.status);
+                    console.error('Failed to set billing address, status:', response.status);
                     throw new Error('<?= $escaper->escapeJs(__('Failed to set billing address')) ?>');
                 }
 
