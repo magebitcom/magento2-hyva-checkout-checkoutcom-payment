@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      layout="1column"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="checkout.cart.methods">
+            <block template="Magebit_CheckoutComPayment::in-context/applepay-express-button.phtml"
+                   name="checkoutcom.applepay.cart.shortcut"
+                   after="-"
+                   ifconfig="payment/checkoutcom_apple_pay/enabled_on_cart"/>
+        </referenceContainer>
+    </body>
+</page>

@@ -8,7 +8,7 @@
 declare(strict_types=1);
 
 use Hyva\Theme\Model\ViewModelRegistry;
-use Magebit\CheckoutComPayment\Helper\Config;
+use Magebit\CheckoutComPayment\ViewModel\MbWay as Config;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComMBWayStatus;
 use Magento\Framework\Escaper;
 use Magento\Framework\View\Element\Template;
@@ -17,8 +17,8 @@ use Magento\Framework\View\Element\Template;
 /** @var Escaper $escaper */
 /** @var CheckoutComMBWayStatus $magewire */
 /** @var ViewModelRegistry $viewModels */
-
 /** @var Config $config */
+
 $config = $viewModels->require(Config::class);
 $statusText = $config->getMBWayStatusText();
 $pollingInterval = $config->getMBWayPollingInterval();

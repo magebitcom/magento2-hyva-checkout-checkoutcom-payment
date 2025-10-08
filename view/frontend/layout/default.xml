@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <!-- Apple Pay Express Button Script - included once globally -->
+        <referenceContainer name="before.body.end">
+            <block class="Magento\Framework\View\Element\Template"
+                   name="checkoutcom.applepay.script"
+                   template="Magebit_CheckoutComPayment::scripts/applepay-express.phtml"/>
+        </referenceContainer>
+
+        <referenceContainer name="cart-drawer.bottom">
+            <block name="checkoutcom.applepay.minicart.button"
+                   template="Magebit_CheckoutComPayment::in-context/applepay-express-button.phtml"
+                   ifconfig="payment/checkoutcom_apple_pay/enabled_on_minicart"/>
+        </referenceContainer>
+    </body>
+</page>

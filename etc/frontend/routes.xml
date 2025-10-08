@@ -11,7 +11,7 @@
 >
     <router id="standard">
         <route id="checkoutcom" frontName="checkout_com">
-            <module name="Magebit_CheckoutComPayment" before="CheckoutCom_Magento2" />
+            <module name="Magebit_CheckoutComPayment" />
         </route>
     </router>
 </config>
