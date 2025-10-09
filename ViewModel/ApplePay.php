@@ -281,7 +281,7 @@ class ApplePay implements ArgumentInterface
      */
     public function isApplePayCartEnabled(): bool
     {
-        return $this->scopeConfig->getValue(
+        return (bool) $this->scopeConfig->getValue(
             'payment/checkoutcom_apple_pay/enabled_on_cart',
             ScopeInterface::SCOPE_STORE
         );
@@ -294,7 +294,7 @@ class ApplePay implements ArgumentInterface
      */
     public function isApplePayMinicartEnabled(): bool
     {
-        return $this->scopeConfig->getValue(
+        return (bool) $this->scopeConfig->getValue(
             'payment/checkoutcom_apple_pay/enabled_on_minicart',
             ScopeInterface::SCOPE_STORE
         );

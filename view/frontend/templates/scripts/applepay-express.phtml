@@ -18,10 +18,9 @@ use Magento\Framework\View\Element\Template;
 
 $appleConfig = $viewModels->require(ApplePay::class);
 
-if (!$appleConfig->isApplePayCartEnabled() || !$appleConfig->isApplePayMinicartEnabled() ) {
+if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartEnabled() ) {
     return;
 }
-
 ?>
 <script>
     function checkoutComApplePayCart() {
