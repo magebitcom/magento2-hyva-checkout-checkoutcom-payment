@@ -9,12 +9,14 @@ declare(strict_types=1);
 
 use Magebit\CheckoutComPayment\Helper\Config;
 use Hyva\Theme\Model\ViewModelRegistry;
+use Magebit\CheckoutComPayment\ViewModel\Utilities;
 use Magento\Framework\Escaper;
 
 /** @var Escaper $escaper */
 /** @var ViewModelRegistry $viewModels */
 
 $config = $viewModels->require(Config::class);
+$utilities = $viewModels->require(Utilities::class);
 
 ?>
 <form x-data="initMagewireForm"
@@ -98,7 +100,7 @@ $config = $viewModels->require(Config::class);
                            x-model="validCard"
                     >
                 </div>
-                <?php if ($config->isSaveCardEnabled() && $config->isVaultEnabled() && $config->isCustomerLoggedIn()): ?>
+                <?php if ($config->isSaveCardEnabled() && $config->isVaultEnabled() && $utilities->isCustomerLoggedIn()): ?>
                     <label class="flex items-center cursor-pointer">
                         <div class="field">
                             <input type="checkbox"

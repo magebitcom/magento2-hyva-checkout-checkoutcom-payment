@@ -11,6 +11,7 @@ namespace Magebit\CheckoutComPayment\ViewModel;
 
 use CheckoutCom\Magento2\Model\Config\Backend\Source\ConfigApplePayButton;
 use Magebit\CheckoutComPayment\Helper\Config;
+use Magento\Directory\Model\AllowedCountries;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
@@ -22,11 +23,14 @@ class ApplePay implements ArgumentInterface
      * @param ScopeConfigInterface $scopeConfig
      * @param Config $config
      * @param UrlInterface $urls
+     * @param AllowedCountries $allowedCountries
      */
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly Config $config,
-        private readonly UrlInterface $urls
+        private readonly UrlInterface $urls,
+        private readonly AllowedCountries $allowedCountries
+
     ) {
     }
 
@@ -128,6 +132,19 @@ class ApplePay implements ArgumentInterface
     {
         $networksEnabled = $this->getAppleSupportedNetworks();
         return $this->processSupportedNetworks($networksEnabled);
+    }
+
+    /**
+     * Get supported countries for Apple Pay from Magento configuration
+     *
+     * Returns an array of ISO 3166-1 alpha-2 country codes that are allowed in the current store.
+     * This list restricts which countries can be used for billing and shipping addresses in Apple Pay.
+     *
+     * @return array
+     */
+    private function getSupportedCountries(): array
+    {
+        return $this->allowedCountries->getAllowedCountries();
     }
 
     /**
@@ -255,6 +272,7 @@ class ApplePay implements ArgumentInterface
             'country' => $this->config->getStoreCountry(),
             'supportedNetworks' => $supportedNetworks,
             'merchantCapabilities' => $this->getAppleMerchantCapabilities(),
+            'supportedCountries' => $this->getSupportedCountries(),
 
             // Button styling
             'buttonStyle' => $this->getAppleButtonStyle(),

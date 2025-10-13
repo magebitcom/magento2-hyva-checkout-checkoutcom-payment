@@ -14,24 +14,26 @@ use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Quote\Model\QuoteIdMaskFactory;
 use Magento\Quote\Model\ResourceModel\Quote\QuoteIdMask as QuoteIdMaskResource;
 
 class Utilities implements ArgumentInterface
 {
-
     /**
      * @param CheckoutSession $checkoutSession
      * @param CustomerSession $customerSession
      * @param QuoteIdMaskFactory $quoteIdMaskFactory
      * @param QuoteIdMaskResource $quoteIdMaskResource
+     * @param SerializerInterface $serializer
      */
     public function __construct(
         private readonly CheckoutSession $checkoutSession,
         private readonly CustomerSession $customerSession,
         private readonly QuoteIdMaskFactory $quoteIdMaskFactory,
         private readonly QuoteIdMaskResource $quoteIdMaskResource,
+        private readonly SerializerInterface $serializer
     ) {
     }
 
@@ -99,21 +101,6 @@ class Utilities implements ArgumentInterface
     }
 
     /**
-     * Check if cart is virtual
-     *
-     * @return bool
-     */
-    public function isVirtual(): bool
-    {
-        try {
-            $quote = $this->checkoutSession->getQuote();
-            return $quote->isVirtual();
-        } catch (LocalizedException | NoSuchEntityException $e) {
-            return false;
-        }
-    }
-
-    /**
      * Check if customer is logged in
      *
      * @return bool
@@ -121,5 +108,16 @@ class Utilities implements ArgumentInterface
     public function isCustomerLoggedIn(): bool
     {
         return $this->customerSession->isLoggedIn();
+    }
+
+    /**
+     * Unserialize the given string
+     *
+     * @param string $data
+     * @return array
+     */
+    public function unserialize(string $data): array
+    {
+        return $this->serializer->unserialize($data);
     }
 }

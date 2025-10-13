@@ -206,6 +206,7 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                     currencyCode: this.currency,
                     supportedNetworks: this.applePayConfig.supportedNetworks,
                     merchantCapabilities: this.applePayConfig.merchantCapabilities,
+                    supportedCountries: this.applePayConfig.supportedCountries || [],
                     total: {
                         label: this.applePayConfig.merchantName,
                         amount: this.amount.toFixed(2),
