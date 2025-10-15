@@ -201,12 +201,27 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
             },
 
             getApplePayPaymentRequest() {
+                <?php /** Initial breakdown with tax at 0 to prevent Apple Pay auto-calculation */ ?>
+                const initialLineItems = [
+                    {
+                        label: 'Subtotal',
+                        amount: this.amount.toFixed(2),
+                        type: 'final'
+                    },
+                    {
+                        label: 'Tax',
+                        amount: '0.00',
+                        type: 'final'
+                    }
+                ];
+
                 const baseRequest = {
                     countryCode: this.applePayConfig.country,
                     currencyCode: this.currency,
                     supportedNetworks: this.applePayConfig.supportedNetworks,
                     merchantCapabilities: this.applePayConfig.merchantCapabilities,
                     supportedCountries: this.applePayConfig.supportedCountries || [],
+                    lineItems: initialLineItems,
                     total: {
                         label: this.applePayConfig.merchantName,
                         amount: this.amount.toFixed(2),
@@ -297,14 +312,17 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                 const validationError = this.validateShippingContactForEstimate(this.shippingAddress);
                 if (validationError) {
                     console.error('Invalid shipping contact for estimate:', validationError);
+
                     this.applePaySession.completeShippingContactSelection({
                         status: ApplePaySession.STATUS_FAILURE,
                         errors: [validationError],
+                        newShippingMethods: [],
                         newTotal: {
                             type: 'final',
                             label: this.applePayConfig.merchantName,
-                            amount: this.applePayConfig.amount.toFixed(2)
-                        }
+                            amount: this.amount.toFixed(2)
+                        },
+                        newLineItems: []
                     });
                     return;
                 }
@@ -313,36 +331,42 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
 
                 this.getShippingMethods(this.shippingAddress.countryCode, this.shippingAddress.postalCode)
                     .then(shippingOptions => {
-                        currentShippingOptions = shippingOptions; // Store for later use
-                        if (shippingOptions.length > 0) {
-                            return this.getCartTotals(this.shippingAddress);
-                        } else {
-                            throw new Error('<?= $escaper->escapeJs(__('No shipping methods available for this address')) ?>');
+                        currentShippingOptions = shippingOptions;
+
+                        if (shippingOptions.length === 0) {
+                            throw {
+                                code: 'NO_SHIPPING',
+                                message: '<?= $escaper->escapeJs(__('We cannot ship to this address. Please select a different delivery address.')) ?>'
+                            };
                         }
+
+                        return this.getCartTotals(this.shippingAddress);
                     })
                     .then(totals => {
                         this.totalsBreakdown = totals;
                         this.applePaySession.completeShippingContactSelection(
                             ApplePaySession.STATUS_SUCCESS,
-                            currentShippingOptions, // Use the stored variable
+                            currentShippingOptions,
                             totals.total,
                             totals.breakdown
                         );
                     })
                     .catch(error => {
                         console.error('Shipping contact selection error:', error);
+
+                        const errorMessage = error.message || '<?= $escaper->escapeJs(__('Unable to process this address')) ?>';
+                        const applePayError = new ApplePayError("addressUnserviceable", "postalAddress", errorMessage);
+
                         this.applePaySession.completeShippingContactSelection({
                             status: ApplePaySession.STATUS_FAILURE,
-                            errors: [new ApplePayError(
-                                "addressUnserviceable",
-                                "country",
-                                error.message
-                            )],
+                            errors: [applePayError],
+                            newShippingMethods: [],
                             newTotal: {
                                 type: 'final',
                                 label: this.applePayConfig.merchantName,
-                                amount: this.applePayConfig.amount.toFixed(2)
-                            }
+                                amount: this.amount.toFixed(2)
+                            },
+                            newLineItems: []
                         });
                     });
             },
@@ -354,44 +378,24 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                     }
                 });
 
-                // Calculate new totals with updated shipping cost
-                if (this.totalsBreakdown && this.totalsBreakdown.breakdown) {
-                    // Update shipping cost in the breakdown
-                    const updatedBreakdown = this.totalsBreakdown.breakdown.map(item => {
-                        if (item.label === 'Shipping & Handling') {
-                            return {
-                                ...item,
-                                amount: parseFloat(this.selectedShippingMethod.amount).toFixed(2)
-                            };
-                        }
-                        return item;
+                <?php /** Re-fetch totals from server as shipping method changes can affect other totals */ ?>
+                this.getCartTotals(this.shippingAddress)
+                    .then(totals => {
+                        this.totalsBreakdown = totals;
+                        this.applePaySession.completeShippingMethodSelection(
+                            ApplePaySession.STATUS_SUCCESS,
+                            totals.total,
+                            totals.breakdown
+                        );
+                    })
+                    .catch(error => {
+                        console.error('Shipping method selection error:', error);
+
+                        const errorMessage = error.message || '<?= $escaper->escapeJs(__('Failed to update shipping method. Please try again.')) ?>';
+                        this.displayWarning(errorMessage);
+
+                        this.applePaySession.completeShippingMethodSelection(ApplePaySession.STATUS_FAILURE);
                     });
-
-                    // Recalculate grand total
-                    let grandTotal = 0;
-                    updatedBreakdown.forEach(item => {
-                        grandTotal += parseFloat(item.amount);
-                    });
-
-                    const updatedTotals = {
-                        breakdown: updatedBreakdown,
-                        total: {
-                            type: 'final',
-                            label: this.applePayConfig.merchantName,
-                            amount: grandTotal.toFixed(2)
-                        }
-                    };
-
-                    this.totalsBreakdown = updatedTotals;
-
-                    this.applePaySession.completeShippingMethodSelection(
-                        ApplePaySession.STATUS_SUCCESS,
-                        updatedTotals.total,
-                        updatedTotals.breakdown
-                    );
-                } else {
-                    this.applePaySession.completeShippingMethodSelection(ApplePaySession.STATUS_FAILURE);
-                }
             },
 
             async handlePaymentAuthorized(event) {
@@ -471,8 +475,13 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                 });
 
                 if (!response.ok) {
-                    console.error('Failed to fetch shipping methods, status:', response.status);
-                    throw new Error('<?= $escaper->escapeJs(__('Failed to fetch shipping methods')) ?>');
+                    const errorText = await response.text();
+                    console.error('Failed to fetch shipping methods, status:', response.status, 'Response:', errorText);
+
+                    throw {
+                        code: 'API_ERROR',
+                        message: '<?= $escaper->escapeJs(__('Unable to retrieve shipping options. Please try again.')) ?>'
+                    };
                 }
 
                 const methods = await response.json();
@@ -518,18 +527,21 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                 });
 
                 if (!response.ok) {
-                    console.error('Failed to calculate totals, status:', response.status);
                     const errorText = await response.text();
-                    console.error('Error response:', errorText);
-                    throw new Error('<?= $escaper->escapeJs(__('Failed to calculate totals')) ?>');
+                    console.error('Failed to calculate totals, status:', response.status, 'Response:', errorText);
+
+                    throw {
+                        code: 'TOTALS_ERROR',
+                        message: '<?= $escaper->escapeJs(__('Unable to calculate order totals. Please try again.')) ?>'
+                    };
                 }
 
                 const totals = await response.json();
                 const breakdown = [];
 
+                <?php /** Include ALL segments (including tax when 0) to prevent Apple Pay auto-calculating tax */ ?>
                 totals.total_segments.forEach(segment => {
                     if (segment.code === 'grand_total') return;
-                    if (segment.code === 'tax' && segment.value === 0) return;
                     if (segment.code === 'giftwrapping' && segment.value === null) return;
 
                     breakdown.push({
