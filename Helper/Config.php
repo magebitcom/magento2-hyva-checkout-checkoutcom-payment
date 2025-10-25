@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace Magebit\CheckoutComPayment\Helper;
 
 use JsonException;
-use Magento\Customer\Model\Session;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\View\Asset\Repository;
@@ -20,12 +19,10 @@ use Magento\Store\Model\ScopeInterface;
 class Config extends AbstractHelper implements ArgumentInterface
 {
     /**
-     * @param Session $session
      * @param Repository $assetRepository
      * @param Context $context
      */
     public function __construct(
-        private readonly Session $session,
         private readonly Repository $assetRepository,
         Context $context
     ) {
@@ -82,16 +79,6 @@ class Config extends AbstractHelper implements ArgumentInterface
             'settings/checkoutcom_configuration/debug_mode',
             ScopeInterface::SCOPE_STORE
         );
-    }
-
-    /**
-     * Check whether the customer is logged in
-     *
-     * @return bool
-     */
-    public function isCustomerLoggedIn(): bool
-    {
-        return $this->session->isLoggedIn();
     }
 
     /**

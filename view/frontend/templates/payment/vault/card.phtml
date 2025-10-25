@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 use CheckoutCom\Magento2\Block\Account\AddCard;
 use Magebit\CheckoutComPayment\Magewire\Payment\Method\CheckoutComCard;
-use Magebit\CheckoutComPayment\ViewModel\Serializer;
+use Magebit\CheckoutComPayment\ViewModel\Utilities;
 use Hyva\Theme\Model\ViewModelRegistry;
 use Magento\Framework\Escaper;
 use Magento\Vault\Model\PaymentToken;
@@ -21,7 +21,7 @@ use Magento\Vault\Model\PaymentToken;
 /** @var ViewModelRegistry $viewModels */
 
 $card = $block->getData('card');
-$details = $viewModels->require(Serializer::class)->unserialize($card->getTokenDetails() ?: '{}');
+$details = $viewModels->require(Utilities::class)->unserialize($card->getTokenDetails() ?: '{}');
 ?>
 <div>
     <label class="flex">
