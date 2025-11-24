@@ -1,6 +1,6 @@
 {
   "name": "magebitcom/magento2-hyva-checkout-checkoutcom-payment",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "This module enables to use CheckoutCom_Magento2 module with Hyva checkout",
   "type": "magento2-module",
   "require": {
