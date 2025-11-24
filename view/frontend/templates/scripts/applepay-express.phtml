@@ -1,9 +1,9 @@
 <?php
 /**
- * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
- * @author    Magebit <info@magebit.com>
- * @license   MIT
- */
+* @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+* @author    Magebit <info@magebit.com>
+* @license   MIT
+*/
 
 declare(strict_types=1);
 
@@ -421,7 +421,7 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                         window.location.href = '<?= $escaper->escapeUrl($block->getUrl('checkout/onepage/success')) ?>';
                     } else {
                         this.applePaySession.completePayment(ApplePaySession.STATUS_FAILURE);
-                        this.displayError('<?= $escaper->escapeJs(__('Payment failed')) ?>');
+                        this.displayError(orderResult.error);
                     }
                 } catch (error) {
                     this.applePaySession.completePayment(ApplePaySession.STATUS_FAILURE);

@@ -47,6 +47,11 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
     private string $urlRedirect = parent::REDIRECT_PATH;
 
     /**
+     * @var string|null
+     */
+    private ?string $errorMessage = null;
+
+    /**
      * @var bool
      */
     private bool $disableRedirect = false;
@@ -265,7 +270,8 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                 return 1;
             }
 
-            $this->messageManager->addErrorMessage(__($message ?: __('An error has occurred, please select another payment method')));
+            $this->errorMessage = $message ? (string)$message: 'An error has occurred, please select another payment method';
+            $this->messageManager->addErrorMessage(__($this->errorMessage));
 
             if ($debugMessage) {
                 $this->logger->write($debugMessage);
@@ -316,7 +322,7 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
     ): ?array {
         if ($quote->getPayment()->getMethod() === null) {
             $paymentMethod = $data['methodId'];
-            $quote->setPaymentMethod($paymentMethod); //payment method
+            $quote->setPaymentMethod($paymentMethod);
             $quote->getPayment()->importData(['method' => $paymentMethod]);
         }
 
@@ -350,6 +356,21 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
         return $this->urlRedirect;
     }
 
+    /**
+     * Get error message
+     *
+     * @return string|null
+     */
+    public function getErrorMessage(): ?string
+    {
+        return $this->errorMessage;
+    }
+
+    /**
+     * Get alternative payment method data
+     *
+     * @return array
+     */
     public function getApmData(): array
     {
         $selectedApm = $this->session->getData(CheckoutComApm::SELECTED_APM);

@@ -75,9 +75,13 @@ class PlaceOrder implements HttpPostActionInterface
             // Place the order using the same service as checkout
             $orderId = $this->placeOrderService->placeOrder($quote);
 
+            $errorMessage = $this->placeOrderService->getErrorMessage();
+            $success = !$errorMessage;
+
             if ($orderId) {
                 return $result->setData([
-                    'success' => true,
+                    'success' => $success,
+                    'error' => $errorMessage,
                     'orderId' => $orderId,
                     'redirectUrl' => $this->placeOrderService->getRedirectUrl($quote, $orderId)
                 ]);
