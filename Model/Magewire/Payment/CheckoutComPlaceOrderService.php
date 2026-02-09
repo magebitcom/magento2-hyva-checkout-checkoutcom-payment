@@ -255,6 +255,14 @@ class CheckoutComPlaceOrderService extends AbstractPlaceOrderService
                 $message = __('Please enter valid card details.');
             }
         } catch (Exception $e) {
+            $this->session->restoreQuote();
+            if ($this->config->isPaymentWithOrderFirst()) {
+                    $this->orderStatusHandler->handleFailedPayment($order);
+                }
+            $message = __('The transaction could not be processed. It is highly likely that the used card has issues, or that the given shipping or billing details contain problematic data.');
+            if (isset($e->error_details)) {
+                $this->logger->write("Checkout.com API error: " . json_encode($e->error_details ?? []));
+            }
             $success = false;
             $this->logger->write($e->getMessage());
         } finally {
