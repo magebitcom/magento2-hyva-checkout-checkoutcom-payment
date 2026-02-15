@@ -1,9 +1,9 @@
 <?php
 /**
-* @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
-* @author    Magebit <info@magebit.com>
-* @license   MIT
-*/
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
 
 declare(strict_types=1);
 
@@ -202,6 +202,9 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
 
             getApplePayPaymentRequest() {
                 <?php /** Initial breakdown with tax at 0 to prevent Apple Pay auto-calculation */ ?>
+                const merchantLabel = this.applePayConfig.merchantName || this.applePayConfig.merchantId || 'Total';
+                const currencyCode = this.currency || this.applePayConfig.currency || 'USD';
+
                 const initialLineItems = [
                     {
                         label: 'Subtotal',
@@ -215,15 +218,26 @@ if (!$appleConfig->isApplePayCartEnabled() && !$appleConfig->isApplePayMinicartE
                     }
                 ];
 
+                // ApplePaySession can choke on Proxy-wrapped arrays/objects; clone to plain values
+                const supportedNetworks = Array.isArray(this.applePayConfig.supportedNetworks)
+                    ? [...this.applePayConfig.supportedNetworks]
+                    : [];
+                const merchantCapabilities = Array.isArray(this.applePayConfig.merchantCapabilities)
+                    ? [...this.applePayConfig.merchantCapabilities]
+                    : [];
+                const supportedCountries = Array.isArray(this.applePayConfig.supportedCountries)
+                    ? [...this.applePayConfig.supportedCountries]
+                    : [];
+
                 const baseRequest = {
-                    countryCode: this.applePayConfig.country,
-                    currencyCode: this.currency,
-                    supportedNetworks: this.applePayConfig.supportedNetworks,
-                    merchantCapabilities: this.applePayConfig.merchantCapabilities,
-                    supportedCountries: this.applePayConfig.supportedCountries || [],
+                    countryCode: (this.applePayConfig.country || '').toUpperCase(),
+                    currencyCode: currencyCode,
+                    supportedNetworks: supportedNetworks,
+                    merchantCapabilities: merchantCapabilities,
+                    supportedCountries: supportedCountries,
                     lineItems: initialLineItems,
                     total: {
-                        label: this.applePayConfig.merchantName,
+                        label: merchantLabel,
                         amount: this.amount.toFixed(2),
                         type: 'final'
                     }
