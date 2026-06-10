@@ -30,7 +30,8 @@ use Magento\Framework\View\Element\Template;
                            wire:model.delay.1000ms="mbwayCountryCode"
                            wire:loading.class="loading"
                            wire:loading.attr="disabled"
-                           oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                           inputmode="numeric"
+                           @input="stripNonDigits"
                            maxlength="3"
                     >
                 </div>
@@ -51,7 +52,8 @@ use Magento\Framework\View\Element\Template;
                            wire:model.delay.1000ms="mbwayPhoneNumber"
                            wire:loading.class="loading"
                            wire:loading.attr="disabled"
-                           oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                           inputmode="numeric"
+                           @input="stripNonDigits"
                            maxlength="9"
                     >
                 </div>

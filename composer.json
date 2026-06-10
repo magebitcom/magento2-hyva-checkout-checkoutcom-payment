@@ -7,7 +7,7 @@
       "magento/framework": "*",
       "checkoutcom/magento2": "^7.0.0",
       "hyva-themes/magento2-compat-module-fallback": "*",
-      "hyva-themes/magento2-hyva-checkout": "*"
+      "hyva-themes/magento2-hyva-checkout": "^1.3"
   },
   "license": "MIT",
   "autoload": {

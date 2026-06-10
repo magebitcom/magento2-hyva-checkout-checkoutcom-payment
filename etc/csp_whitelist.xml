@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * @copyright Copyright (c) 2025 Magebit, Ltd. (https://magebit.com/)
+ * @author    Magebit <info@magebit.com>
+ * @license   MIT
+ */
+-->
+<csp_whitelist xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Csp:etc/csp_whitelist.xsd">
+    <policies>
+        <policy id="script-src">
+            <values>
+                <value id="cko_cdn" type="host">https://cdn.checkout.com</value>
+                <value id="cko_checkout" type="host">https://*.checkout.com</value>
+                <value id="googlepay_js" type="host">https://pay.google.com</value>
+                <value id="googlepay_gstatic" type="host">https://*.gstatic.com</value>
+            </values>
+        </policy>
+        <policy id="connect-src">
+            <values>
+                <value id="cko_api" type="host">https://api.checkout.com</value>
+                <value id="cko_api_sandbox" type="host">https://api.sandbox.checkout.com</value>
+                <value id="cko_checkout" type="host">https://*.checkout.com</value>
+                <value id="googlepay" type="host">https://pay.google.com</value>
+            </values>
+        </policy>
+        <policy id="frame-src">
+            <values>
+                <value id="cko_checkout" type="host">https://*.checkout.com</value>
+                <value id="googlepay" type="host">https://pay.google.com</value>
+            </values>
+        </policy>
+        <policy id="img-src">
+            <values>
+                <value id="cko_checkout" type="host">https://*.checkout.com</value>
+            </values>
+        </policy>
+    </policies>
+</csp_whitelist>
